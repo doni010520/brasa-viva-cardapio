@@ -1,12 +1,25 @@
+# Nada aqui é necessário para rodar o app. Manter a imagem enxuta também
+# encurta o tempo de build no EasyPanel.
+
 node_modules
 .next
 .git
+.github
+
+# segredos nunca entram na imagem: o EasyPanel injeta as variáveis
 .env
 .env.local
 .env.*.local
+
+# ferramentas de teste e manutenção, usadas só na máquina de quem desenvolve
+scripts
+.testes
+agente-impressao
+
+# migrações rodam no Supabase, não dentro do container
+supabase
+
 npm-debug.log*
-README.md
 .vscode
 .idea
 *.md
-!package.json

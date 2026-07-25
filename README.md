@@ -42,17 +42,13 @@ npm run dev
 
 ### 4. Deploy no EasyPanel
 
-1. Suba o repositório no GitHub.
-2. No EasyPanel: **Create App → App**, aponte para o repositório, build por **Dockerfile**.
-3. Em **Build → Build Arguments**, informe (elas entram no bundle do navegador):
-   ```
-   NEXT_PUBLIC_SUPABASE_URL
-   NEXT_PUBLIC_SUPABASE_ANON_KEY
-   NEXT_PUBLIC_URL_BASE
-   ```
-4. Em **Environment**, informe todas as variáveis do `.env.example`
-   (inclusive as `NEXT_PUBLIC_*` de novo, mais `SUPABASE_SERVICE_ROLE_KEY` e as do Mercado Pago).
-5. Domínio: aponte o domínio e ligue o **HTTPS**. Porta interna: `3000`.
+Passo a passo completo em **[DEPLOY.md](DEPLOY.md)**, incluindo a pegadinha
+que mais derruba esse tipo de deploy: as variáveis `NEXT_PUBLIC_*` são
+gravadas no **build**, então precisam ir em *Build Arguments* — configurar só
+em *Environment* não basta.
+
+Depois de subir, `https://SEU-DOMINIO/api/saude` diz o que está configurado e
+o que faltou, sem expor nenhuma chave.
 
 ### 5. Ligar o Mercado Pago (opcional)
 
