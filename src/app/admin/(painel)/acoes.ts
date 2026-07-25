@@ -76,6 +76,30 @@ export async function mudarStatusAction(
   return { ok: true }
 }
 
+/**
+ * Manda a comanda para a fila de novo.
+ *
+ * Papel amassado, impressora sem tinta, alguém perdeu o cupom — acontece
+ * todo dia. Vira um trabalho novo na fila; o agente pega no próximo giro.
+ */
+export async function reimprimirAction(pedidoId: string): Promise<Resposta> {
+  try {
+    await exigirAdmin()
+  } catch {
+    return { ok: false, erro: 'Sessão expirada. Entre de novo.' }
+  }
+
+  const supabase = criarClienteAdmin()
+  const { error } = await supabase
+    .from('impressoes')
+    .insert({ pedido_id: pedidoId, via: 'cozinha' })
+
+  if (error) return { ok: false, erro: 'Não consegui enfileirar a impressão.' }
+
+  revalidatePath('/admin')
+  return { ok: true }
+}
+
 /** Chave geral: fecha a loja na hora, mesmo dentro do horário. */
 export async function alternarLojaAction(aberta: boolean): Promise<Resposta> {
   try {

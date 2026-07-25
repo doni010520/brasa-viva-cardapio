@@ -9,6 +9,7 @@ import {
   ChefHat,
   Clock,
   CreditCard,
+  FileText,
   Loader2,
   MapPin,
   Phone,
@@ -17,7 +18,7 @@ import {
   UtensilsCrossed,
   X,
 } from 'lucide-react'
-import { mudarStatusAction } from '@/app/admin/(painel)/acoes'
+import { mudarStatusAction, reimprimirAction } from '@/app/admin/(painel)/acoes'
 import { Botao, Cartao, Selo, Vazio } from '@/components/ui'
 import { linkWhatsapp, moeda } from '@/lib/format'
 import { haQuantoTempo, horaCurta } from '@/lib/tempo'
@@ -97,8 +98,22 @@ export function PainelPedidos({ pedidos }: { pedidos: Pedido[] }) {
 function CartaoPedido({ pedido }: { pedido: Pedido }) {
   const router = useRouter()
   const [salvando, salvar] = useTransition()
+  const [reenfileirando, reenfileirar] = useTransition()
+  const [reimpresso, setReimpresso] = useState(false)
   const [erro, setErro] = useState('')
   const [expandido, setExpandido] = useState(true)
+
+  function reimprimir() {
+    setErro('')
+    reenfileirar(async () => {
+      const resposta = await reimprimirAction(pedido.id)
+      if (!resposta.ok) setErro(resposta.erro)
+      else {
+        setReimpresso(true)
+        setTimeout(() => setReimpresso(false), 3000)
+      }
+    })
+  }
 
   function mudar(novo: StatusPedido) {
     setErro('')
@@ -237,13 +252,27 @@ function CartaoPedido({ pedido }: { pedido: Pedido }) {
               {pedido.cliente_telefone}
             </a>
 
+            <button
+              onClick={reimprimir}
+              disabled={reenfileirando}
+              className="flex items-center gap-1 font-medium text-tinta-600 hover:underline disabled:opacity-50"
+              title="Manda a comanda para a impressora de novo"
+            >
+              {reenfileirando ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Printer className="h-3.5 w-3.5" />
+              )}
+              {reimpresso ? 'Enviado!' : 'Reimprimir'}
+            </button>
+
             <Link
               href={`/admin/comanda/${pedido.id}`}
               target="_blank"
               className="flex items-center gap-1 font-medium text-tinta-600 hover:underline"
             >
-              <Printer className="h-3.5 w-3.5" />
-              Comanda
+              <FileText className="h-3.5 w-3.5" />
+              Ver comanda
             </Link>
 
             {pedido.forma_pagamento === 'online' && (
