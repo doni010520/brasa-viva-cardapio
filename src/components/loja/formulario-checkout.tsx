@@ -33,6 +33,7 @@ type DadosSalvos = {
 }
 
 export function FormularioCheckout({
+  noLocal,
   pedidoMinimoCentavos,
   aceitaOnline,
   aceitaLocal,
@@ -44,6 +45,7 @@ export function FormularioCheckout({
   entregaGratisAcimaCentavos,
   horariosRetirada,
 }: {
+  noLocal: boolean
   pedidoMinimoCentavos: number
   aceitaOnline: boolean
   aceitaLocal: boolean
@@ -68,7 +70,7 @@ export function FormularioCheckout({
     aceitaOnline ? 'online' : 'local'
   )
   const [tipoEntrega, setTipoEntrega] = useState<TipoEntrega>(
-    aceitaRetirada ? 'retirada' : 'entrega'
+    noLocal ? 'local' : aceitaRetirada ? 'retirada' : 'entrega'
   )
 
   const [bairroId, setBairroId] = useState(bairros[0]?.id ?? '')
@@ -105,6 +107,14 @@ export function FormularioCheckout({
     }
   }, [bairros])
 
+  // Trocou para entrega com "pagar na retirada" marcado? Passa para online,
+  // senão o cliente só descobriria o problema ao tentar enviar.
+  useEffect(() => {
+    if (tipoEntrega === 'entrega' && formaPagamento === 'local' && aceitaOnline) {
+      setFormaPagamento('online')
+    }
+  }, [tipoEntrega, formaPagamento, aceitaOnline])
+
   const itensParaServidor = useMemo(
     () =>
       itens.map((i) => ({
@@ -117,6 +127,7 @@ export function FormularioCheckout({
   )
 
   const ehEntrega = tipoEntrega === 'entrega'
+  const ehNoLocal = tipoEntrega === 'local'
   const bairroEscolhido = bairros.find((b) => b.id === bairroId) ?? null
 
   const entregaIsenta =
@@ -178,7 +189,7 @@ export function FormularioCheckout({
         observacoes: observacoes.trim() || undefined,
         formaPagamento,
         tipoEntrega,
-        retiradaPrevista: ehEntrega ? null : retirada || null,
+        retiradaPrevista: ehEntrega || ehNoLocal ? null : retirada || null,
         cupom: cupomAplicado ?? undefined,
         itens: itensParaServidor,
         bairroId: ehEntrega ? bairroId : null,
@@ -217,7 +228,10 @@ export function FormularioCheckout({
   }
 
   const faltaParaMinimo = pedidoMinimoCentavos - subtotalCentavos
-  const mostraEscolhaDeEntrega = aceitaRetirada && aceitaEntrega
+  // quem está no salão não escolhe retirada/entrega
+  const mostraEscolhaDeEntrega = !ehNoLocal && aceitaRetirada && aceitaEntrega
+  // entrega sem pagamento online configurado não tem como ser paga
+  const entregaSemPagamento = ehEntrega && !aceitaOnline
 
   return (
     <form onSubmit={enviar} className="py-6">
@@ -231,9 +245,11 @@ export function FormularioCheckout({
 
       <h1 className="text-2xl font-black tracking-tight text-tinta-900">Fechar pedido</h1>
       <p className="mt-1 text-sm text-tinta-500">
-        {ehEntrega
-          ? `A entrega leva cerca de ${bairroEscolhido?.tempo_min ?? tempoEntregaMin} minutos.`
-          : `O preparo leva cerca de ${tempoPreparoMin} minutos.`}
+        {ehNoLocal
+          ? 'Pague por aqui e apresente o código no salão.'
+          : ehEntrega
+            ? `A entrega leva cerca de ${bairroEscolhido?.tempo_min ?? tempoEntregaMin} minutos.`
+            : `O preparo leva cerca de ${tempoPreparoMin} minutos.`}
       </p>
 
       {/* ---------- Retirada ou entrega ---------- */}
@@ -268,7 +284,7 @@ export function FormularioCheckout({
       {/* ---------- Dados do cliente ---------- */}
       <Cartao className="mt-4 p-4">
         <h2 className="mb-3 font-bold text-tinta-900">
-          {ehEntrega ? 'Seus dados' : 'Quem vai retirar'}
+          {ehNoLocal ? 'Seus dados' : ehEntrega ? 'Seus dados' : 'Quem vai retirar'}
         </h2>
 
         <div className="space-y-3">
@@ -317,7 +333,7 @@ export function FormularioCheckout({
             </div>
           )}
 
-          {!ehEntrega && horariosRetirada.length > 0 && (
+          {!ehEntrega && !ehNoLocal && horariosRetirada.length > 0 && (
             <div>
               <Rotulo htmlFor="retirada">Horário da retirada</Rotulo>
               <Selecao id="retirada" value={retirada} onChange={(e) => setRetirada(e.target.value)}>
@@ -339,7 +355,11 @@ export function FormularioCheckout({
               value={observacoes}
               onChange={(e) => setObservacoes(e.target.value)}
               placeholder={
-                ehEntrega ? 'Ex.: portão azul, interfone quebrado' : 'Ex.: embala pra viagem'
+                ehNoLocal
+                  ? 'Ex.: mesa 12, somos 3 pessoas'
+                  : ehEntrega
+                    ? 'Ex.: portão azul, interfone quebrado'
+                    : 'Ex.: embala pra viagem'
               }
               maxLength={300}
             />
@@ -431,19 +451,41 @@ export function FormularioCheckout({
               onSelecionar={() => setFormaPagamento('online')}
               icone={<CreditCard className="h-5 w-5" />}
               titulo="Pagar agora (Pix ou cartão)"
-              descricao="Você paga pelo Mercado Pago e o preparo começa na hora."
+              descricao="Você paga aqui mesmo e o preparo começa na hora."
             />
           )}
-          {aceitaLocal && (
+
+          {/* Dinheiro só onde existe um balcão: no salão ou na retirada.
+              Nunca na entrega — o entregador não recebe pagamento. */}
+          {aceitaLocal && !ehEntrega && (
             <OpcaoPagamento
               marcada={formaPagamento === 'local'}
               onSelecionar={() => setFormaPagamento('local')}
               icone={<Banknote className="h-5 w-5" />}
-              titulo={ehEntrega ? 'Pagar na entrega' : 'Pagar na retirada'}
-              descricao="Pix, cartão ou dinheiro na hora."
+              titulo={ehNoLocal ? 'Pagar no caixa' : 'Pagar na retirada'}
+              descricao={
+                ehNoLocal
+                  ? 'Dinheiro, Pix ou cartão direto no caixa do restaurante.'
+                  : 'Dinheiro, Pix ou cartão no balcão, na hora de retirar.'
+              }
             />
           )}
         </div>
+
+        {aceitaLocal && ehEntrega && !entregaSemPagamento && (
+          <p className="mt-2 rounded-xl bg-tinta-100 px-3.5 py-2.5 text-xs text-tinta-600">
+            Para entrega, o pagamento é pelo site. <strong>Dinheiro só na retirada</strong> no
+            balcão — o entregador não recebe pagamento.
+          </p>
+        )}
+
+        {entregaSemPagamento && (
+          <p className="mt-2 rounded-xl bg-amber-50 px-3.5 py-3 text-sm text-amber-800">
+            <strong className="font-semibold">Entrega indisponível agora.</strong> O pagamento
+            online está fora do ar, e o entregador não recebe dinheiro. Escolha{' '}
+            <strong>retirar no balcão</strong> para concluir o pedido.
+          </p>
+        )}
       </Cartao>
 
       {/* ---------- Cupom ---------- */}
@@ -559,15 +601,17 @@ export function FormularioCheckout({
         <div className="mx-auto max-w-3xl">
           <Botao
             type="submit"
-            disabled={enviando || faltaParaMinimo > 0}
+            disabled={enviando || faltaParaMinimo > 0 || entregaSemPagamento}
             className="h-12 w-full text-base"
           >
             {enviando && <Loader2 className="h-4 w-4 animate-spin" />}
-            {faltaParaMinimo > 0
-              ? `Faltam ${moeda(faltaParaMinimo)} para o mínimo`
-              : formaPagamento === 'online'
-                ? `Ir para o pagamento · ${moeda(totalCentavos)}`
-                : `Enviar pedido · ${moeda(totalCentavos)}`}
+            {entregaSemPagamento
+              ? 'Escolha retirar no balcão'
+              : faltaParaMinimo > 0
+                ? `Faltam ${moeda(faltaParaMinimo)} para o mínimo`
+                : formaPagamento === 'online'
+                  ? `Ir para o pagamento · ${moeda(totalCentavos)}`
+                  : `Enviar pedido · ${moeda(totalCentavos)}`}
           </Botao>
         </div>
       </div>
@@ -627,7 +671,7 @@ function OpcaoPagamento({
         name="pagamento"
         checked={marcada}
         onChange={onSelecionar}
-        className="mt-1 h-4 w-4 accent-black"
+        className="mt-1 h-5 w-5 accent-black"
       />
       <span className="text-tinta-600">{icone}</span>
       <span className="flex-1">

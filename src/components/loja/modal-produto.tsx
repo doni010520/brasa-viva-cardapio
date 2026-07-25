@@ -181,7 +181,7 @@ export function ModalProduto({
                           checked={marcada}
                           disabled={!opcao.disponivel || limiteAtingido}
                           onChange={() => alternar(grupo.id, opcao.id, grupo.max_escolhas)}
-                          className="h-4 w-4 accent-black"
+                          className="h-5 w-5 accent-black"
                         />
                         <span className="flex-1 text-sm text-tinta-900">{opcao.nome}</span>
                         {opcao.preco_extra_centavos > 0 && (

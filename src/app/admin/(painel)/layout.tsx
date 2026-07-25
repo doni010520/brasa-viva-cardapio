@@ -28,7 +28,7 @@ export default async function LayoutPainel({ children }: { children: React.React
             <Link
               href="/"
               target="_blank"
-              className="flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-xs font-semibold text-tinta-300 transition hover:bg-white/10 hover:text-white"
+              className="toque flex items-center gap-1.5 rounded-lg px-2.5 text-xs font-semibold text-tinta-300 transition hover:bg-white/10 hover:text-white"
             >
               <ExternalLink className="h-4 w-4" />
               <span className="hidden sm:inline">Ver cardápio</span>
@@ -37,7 +37,7 @@ export default async function LayoutPainel({ children }: { children: React.React
             <form action={sairAction}>
               <button
                 type="submit"
-                className="flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-xs font-semibold text-tinta-300 transition hover:bg-white/10 hover:text-white"
+                className="toque flex items-center gap-1.5 rounded-lg px-2.5 text-xs font-semibold text-tinta-300 transition hover:bg-white/10 hover:text-white"
               >
                 <LogOut className="h-4 w-4" />
                 <span className="hidden sm:inline">Sair</span>

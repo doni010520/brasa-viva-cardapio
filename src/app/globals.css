@@ -56,6 +56,18 @@ body {
   outline-offset: 2px;
 }
 
+/*
+ * Área mínima de toque. 40px é o menor alvo que um dedo acerta sem raiva —
+ * vale para os botões só-de-ícone, que sem isto ficam com 32px.
+ */
+.toque {
+  min-width: 2.5rem;
+  min-height: 2.5rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
 /* Esconde a barra de rolagem das abas de categoria, mantendo o gesto de arrastar */
 .sem-barra::-webkit-scrollbar {
   display: none;

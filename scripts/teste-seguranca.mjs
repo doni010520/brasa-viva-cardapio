@@ -119,6 +119,12 @@ const pagina = await contexto.newPage()
 
 try {
   await pagina.goto(APP, { waitUntil: 'networkidle' })
+  // o site pergunta onde a pessoa vai comer antes de mostrar o cardápio
+  const escolha = pagina.getByRole('button', { name: /Pedido para/ })
+  if (await escolha.count()) {
+    await escolha.first().click()
+    await pagina.waitForTimeout(1500)
+  }
 
   // pega ids reais: um produto barato e uma opção que pertence a OUTRO produto
   const dados = await (async () => {
@@ -211,7 +217,8 @@ try {
   await pagina.waitForURL('**/pedido/**', { timeout: 20000 })
   await pagina.waitForTimeout(800)
 
-  const idPedido = pagina.url().split('/pedido/')[1]
+  // a URL pode terminar em /obrigado; queremos só o id
+  const idPedido = pagina.url().split('/pedido/')[1].split('/')[0]
   const gravado = await fetch(
     `https://api.supabase.com/v1/projects/${env.PROJECT_ID}/database/query`,
     {

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { AlertTriangle, Loader2, MessageCircle } from 'lucide-react'
+import { AlertTriangle, Camera, Loader2, MessageCircle } from 'lucide-react'
 import {
   salvarConfiguracoesAction,
   salvarHorariosAction,
@@ -96,10 +96,17 @@ function BlocoLoja({
     aceita_pix: config.aceita_pix,
     aceita_cartao: config.aceita_cartao,
     pix_expira_min: String(config.pix_expira_min),
+    aceita_consumo_local: config.aceita_consumo_local,
     aceita_retirada: config.aceita_retirada,
     aceita_entrega: config.aceita_entrega,
     tempo_entrega_min: String(config.tempo_entrega_min),
     entrega_gratis_acima: centavosParaInput(config.entrega_gratis_acima_centavos),
+    instagram_url: config.instagram_url ?? '',
+    campanha_ativa: config.campanha_ativa,
+    campanha_titulo: config.campanha_titulo ?? '',
+    campanha_texto: config.campanha_texto ?? '',
+    campanha_botao: config.campanha_botao ?? '',
+    campanha_emoji: config.campanha_emoji ?? '🍫',
   })
 
   function mudar<C extends keyof typeof campos>(chave: C, valor: (typeof campos)[C]) {
@@ -168,7 +175,7 @@ function BlocoLoja({
                 type="color"
                 value={campos.cor_primaria}
                 onChange={(e) => mudar('cor_primaria', e.target.value)}
-                className="h-11 w-14 shrink-0 cursor-pointer rounded-xl border border-tinta-200"
+                className="h-11 w-14 shrink-0 cursor-pointer rounded-xl border border-tinta-200 text-base"
               />
               <Campo
                 value={campos.cor_primaria}
@@ -250,14 +257,32 @@ function BlocoLoja({
         </p>
 
         <hr className="border-tinta-200" />
-        <h2 className="font-bold text-tinta-900">Retirada e entrega</h2>
+        <h2 className="font-bold text-tinta-900">Como a casa atende</h2>
+
+        <label className="flex items-start gap-2.5">
+          <input
+            type="checkbox"
+            checked={campos.aceita_consumo_local}
+            onChange={(e) => mudar('aceita_consumo_local', e.target.checked)}
+            className="mt-0.5 h-5 w-5 accent-black"
+          />
+          <span>
+            <span className="block text-sm font-medium text-tinta-900">
+              Atender no salão (buffet livre)
+            </span>
+            <span className="block text-xs text-tinta-500">
+              O cliente escolhe “estou no restaurante”, paga pelo celular e se serve. Comida no
+              quilo continua sendo direto no balcão, fora do sistema.
+            </span>
+          </span>
+        </label>
 
         <label className="flex items-start gap-2.5">
           <input
             type="checkbox"
             checked={campos.aceita_retirada}
             onChange={(e) => mudar('aceita_retirada', e.target.checked)}
-            className="mt-0.5 h-4 w-4 accent-black"
+            className="mt-0.5 h-5 w-5 accent-black"
           />
           <span>
             <span className="block text-sm font-medium text-tinta-900">
@@ -272,7 +297,7 @@ function BlocoLoja({
             type="checkbox"
             checked={campos.aceita_entrega}
             onChange={(e) => mudar('aceita_entrega', e.target.checked)}
-            className="mt-0.5 h-4 w-4 accent-black"
+            className="mt-0.5 h-5 w-5 accent-black"
           />
           <span>
             <span className="block text-sm font-medium text-tinta-900">Aceitar entrega</span>
@@ -326,7 +351,7 @@ function BlocoLoja({
             type="checkbox"
             checked={campos.aceita_pagamento_online}
             onChange={(e) => mudar('aceita_pagamento_online', e.target.checked)}
-            className="mt-0.5 h-4 w-4 accent-black"
+            className="mt-0.5 h-5 w-5 accent-black"
           />
           <span>
             <span className="block text-sm font-medium text-tinta-900">
@@ -345,7 +370,7 @@ function BlocoLoja({
                 type="checkbox"
                 checked={campos.aceita_pix}
                 onChange={(e) => mudar('aceita_pix', e.target.checked)}
-                className="mt-0.5 h-4 w-4 accent-black"
+                className="mt-0.5 h-5 w-5 accent-black"
               />
               <span>
                 <span className="block text-sm font-medium text-tinta-900">Pix</span>
@@ -360,7 +385,7 @@ function BlocoLoja({
                 type="checkbox"
                 checked={campos.aceita_cartao}
                 onChange={(e) => mudar('aceita_cartao', e.target.checked)}
-                className="mt-0.5 h-4 w-4 accent-black"
+                className="mt-0.5 h-5 w-5 accent-black"
               />
               <span>
                 <span className="block text-sm font-medium text-tinta-900">
@@ -393,7 +418,7 @@ function BlocoLoja({
             type="checkbox"
             checked={campos.aceita_pagamento_local}
             onChange={(e) => mudar('aceita_pagamento_local', e.target.checked)}
-            className="mt-0.5 h-4 w-4 accent-black"
+            className="mt-0.5 h-5 w-5 accent-black"
           />
           <span>
             <span className="block text-sm font-medium text-tinta-900">
@@ -414,6 +439,88 @@ function BlocoLoja({
             placeholder="CNPJ, telefone ou chave aleatória"
           />
         </div>
+
+        <hr className="border-tinta-200" />
+        <h2 className="flex items-center gap-2 font-bold text-tinta-900">
+          <Camera className="h-4 w-4" />
+          Campanha depois do pagamento
+        </h2>
+        <p className="-mt-2 text-xs text-tinta-500">
+          Aparece na tela de agradecimento, logo depois que o cliente paga — o momento em que
+          ele está com o celular na mão e satisfeito.
+        </p>
+
+        <div>
+          <Rotulo htmlFor="instagram">Link do Instagram do restaurante</Rotulo>
+          <Campo
+            id="instagram"
+            value={campos.instagram_url}
+            onChange={(e) => mudar('instagram_url', e.target.value)}
+            placeholder="https://instagram.com/brasaviva"
+          />
+        </div>
+
+        <label className="flex items-start gap-2.5">
+          <input
+            type="checkbox"
+            checked={campos.campanha_ativa}
+            onChange={(e) => mudar('campanha_ativa', e.target.checked)}
+            className="mt-0.5 h-5 w-5 accent-black"
+          />
+          <span>
+            <span className="block text-sm font-medium text-tinta-900">Mostrar a campanha</span>
+            <span className="block text-xs text-tinta-500">
+              Precisa do link do Instagram preenchido.
+            </span>
+          </span>
+        </label>
+
+        {campos.campanha_ativa && (
+          <div className="space-y-3">
+            <div className="grid grid-cols-[70px_1fr] gap-3">
+              <div>
+                <Rotulo htmlFor="camp-emoji">Emoji</Rotulo>
+                <Campo
+                  id="camp-emoji"
+                  value={campos.campanha_emoji}
+                  onChange={(e) => mudar('campanha_emoji', e.target.value)}
+                  className="text-center text-lg"
+                />
+              </div>
+              <div>
+                <Rotulo htmlFor="camp-titulo">Título</Rotulo>
+                <Campo
+                  id="camp-titulo"
+                  value={campos.campanha_titulo}
+                  onChange={(e) => mudar('campanha_titulo', e.target.value)}
+                  placeholder="Poste e ganhe um bombom!"
+                />
+              </div>
+            </div>
+
+            <div>
+              <Rotulo htmlFor="camp-texto">Explicação da promoção</Rotulo>
+              <AreaTexto
+                id="camp-texto"
+                rows={3}
+                value={campos.campanha_texto}
+                onChange={(e) => mudar('campanha_texto', e.target.value)}
+                placeholder="Marque a gente numa foto do seu pedido e retire seu bombom no caixa."
+                maxLength={280}
+              />
+            </div>
+
+            <div>
+              <Rotulo htmlFor="camp-botao">Texto do botão</Rotulo>
+              <Campo
+                id="camp-botao"
+                value={campos.campanha_botao}
+                onChange={(e) => mudar('campanha_botao', e.target.value)}
+                placeholder="Quero meu bombom"
+              />
+            </div>
+          </div>
+        )}
 
         {erro && <p className="text-sm font-medium text-marca-600">{erro}</p>}
         {aviso && <p className="text-sm font-medium text-emerald-700">{aviso}</p>}
@@ -485,7 +592,7 @@ function BlocoHorarios({ horarios }: { horarios: Horario[] }) {
                   type="checkbox"
                   checked={!linha.fechado}
                   onChange={(e) => mudar(linha.dia_semana, 'fechado', !e.target.checked)}
-                  className="h-4 w-4 accent-black"
+                  className="h-5 w-5 accent-black"
                 />
                 abre
               </label>
@@ -495,7 +602,7 @@ function BlocoHorarios({ horarios }: { horarios: Horario[] }) {
                 value={linha.abre}
                 disabled={linha.fechado}
                 onChange={(e) => mudar(linha.dia_semana, 'abre', e.target.value)}
-                className="rounded-lg border border-tinta-200 bg-white px-2 py-1.5 text-sm disabled:opacity-40"
+                className="rounded-lg border border-tinta-200 bg-white px-2 py-1.5 text-base lg:text-sm disabled:opacity-40"
               />
               <span className="text-tinta-400">às</span>
               <input
@@ -503,7 +610,7 @@ function BlocoHorarios({ horarios }: { horarios: Horario[] }) {
                 value={linha.fecha}
                 disabled={linha.fechado}
                 onChange={(e) => mudar(linha.dia_semana, 'fecha', e.target.value)}
-                className="rounded-lg border border-tinta-200 bg-white px-2 py-1.5 text-sm disabled:opacity-40"
+                className="rounded-lg border border-tinta-200 bg-white px-2 py-1.5 text-base lg:text-sm disabled:opacity-40"
               />
             </div>
           ))}

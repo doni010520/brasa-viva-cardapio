@@ -185,7 +185,7 @@ export function EditorProduto({
                 type="checkbox"
                 checked={disponivel}
                 onChange={(e) => setDisponivel(e.target.checked)}
-                className="h-4 w-4 accent-black"
+                className="h-5 w-5 accent-black"
               />
               <span className="text-sm text-tinta-700">Disponível para venda</span>
             </label>
@@ -194,7 +194,7 @@ export function EditorProduto({
                 type="checkbox"
                 checked={destaque}
                 onChange={(e) => setDestaque(e.target.checked)}
-                className="h-4 w-4 accent-black"
+                className="h-5 w-5 accent-black"
               />
               <span className="text-sm text-tinta-700">Marcar como destaque</span>
             </label>
@@ -429,7 +429,7 @@ function BlocoGrupo({
           <button
             onClick={excluir}
             disabled={apagando}
-            className="rounded-lg p-1.5 text-tinta-500 hover:bg-marca-50 hover:text-marca-600"
+            className="toque rounded-lg text-tinta-500 hover:bg-marca-50 hover:text-marca-600"
             aria-label={`Apagar grupo ${grupo.nome}`}
           >
             {apagando ? (
@@ -537,7 +537,7 @@ function LinhaOpcao({
         <button
           onClick={excluir}
           disabled={apagando}
-          className="rounded p-1 text-tinta-400 hover:text-marca-600"
+          className="toque rounded text-tinta-400 hover:text-marca-600"
           aria-label={`Apagar opção ${opcao.nome}`}
         >
           {apagando ? (
@@ -755,7 +755,7 @@ function FormularioOpcao({
             type="checkbox"
             checked={disponivel}
             onChange={(e) => setDisponivel(e.target.checked)}
-            className="h-4 w-4 accent-black"
+            className="h-5 w-5 accent-black"
           />
           <span className="text-sm text-tinta-700">Disponível</span>
         </label>

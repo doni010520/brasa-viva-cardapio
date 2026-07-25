@@ -4,6 +4,7 @@ import type {
   CategoriaComProdutos,
   Configuracoes,
   Horario,
+  ModoConsumo,
   Pedido,
   PedidoItem,
   Produto,
@@ -38,8 +39,17 @@ export async function buscarHorarios(): Promise<Horario[]> {
   return (data ?? []) as Horario[]
 }
 
-/** Cardápio completo com opções, na ordem definida pelo dono. */
-export async function buscarCardapio(incluirInativos = false): Promise<CategoriaComProdutos[]> {
+/**
+ * Cardápio completo com opções, na ordem definida pelo dono.
+ *
+ * `modo` filtra o que a pessoa pode pedir de onde ela está: buffet livre não
+ * aparece para quem vai receber em casa, e marmita embalada não aparece para
+ * quem está sentado no salão.
+ */
+export async function buscarCardapio(
+  incluirInativos = false,
+  modo?: ModoConsumo
+): Promise<CategoriaComProdutos[]> {
   const supabase = criarClienteAdmin()
 
   const categoriasQuery = supabase.from('categorias').select('*').order('ordem')
@@ -58,9 +68,16 @@ export async function buscarCardapio(incluirInativos = false): Promise<Categoria
   if (erroCat) throw new Error(`Não consegui ler as categorias: ${erroCat.message}`)
   if (erroProd) throw new Error(`Não consegui ler os produtos: ${erroProd.message}`)
 
+  // 'ambos' passa sempre; os demais só no modo correspondente
+  const cabeNoModo = (p: Produto) =>
+    !modo ||
+    p.modo_consumo === 'ambos' ||
+    (modo === 'local' ? p.modo_consumo === 'so_local' : p.modo_consumo === 'so_viagem')
+
   const porCategoria = new Map<string, Produto[]>()
   for (const p of (produtos ?? []) as Produto[]) {
     if (!p.categoria_id) continue
+    if (!cabeNoModo(p)) continue
     // as opções vêm sem ordem garantida no nível mais profundo
     p.grupos_opcoes = (p.grupos_opcoes ?? []).map((g) => ({
       ...g,

@@ -14,13 +14,14 @@ import {
   Phone,
   Printer,
   Store,
+  UtensilsCrossed,
   X,
 } from 'lucide-react'
 import { mudarStatusAction } from '@/app/admin/(painel)/acoes'
 import { Botao, Cartao, Selo, Vazio } from '@/components/ui'
 import { linkWhatsapp, moeda } from '@/lib/format'
 import { haQuantoTempo, horaCurta } from '@/lib/tempo'
-import type { Pedido, StatusPedido } from '@/lib/types'
+import { ROTULO_TIPO_ENTREGA, type Pedido, type StatusPedido } from '@/lib/types'
 
 const COLUNAS: { status: StatusPedido; titulo: string; cor: string }[] = [
   { status: 'recebido', titulo: 'Novos', cor: 'bg-sky-500' },
@@ -110,6 +111,7 @@ function CartaoPedido({ pedido }: { pedido: Pedido }) {
 
   const pago = pedido.status_pagamento === 'pago'
   const ehEntrega = pedido.tipo_entrega === 'entrega'
+  const ehNoLocal = pedido.tipo_entrega === 'local'
   const atrasado =
     pedido.retirada_prevista !== null &&
     new Date(pedido.retirada_prevista) < new Date() &&
@@ -131,11 +133,17 @@ function CartaoPedido({ pedido }: { pedido: Pedido }) {
           <p className="mt-0.5 flex flex-wrap items-center gap-x-2 text-xs text-tinta-500">
             <span
               className={`inline-flex items-center gap-1 font-semibold ${
-                ehEntrega ? 'text-violet-600' : 'text-sky-600'
+                ehEntrega ? 'text-violet-600' : ehNoLocal ? 'text-emerald-600' : 'text-sky-600'
               }`}
             >
-              {ehEntrega ? <Bike className="h-3.5 w-3.5" /> : <Store className="h-3.5 w-3.5" />}
-              {ehEntrega ? 'Entrega' : 'Retirada'}
+              {ehEntrega ? (
+                <Bike className="h-3.5 w-3.5" />
+              ) : ehNoLocal ? (
+                <UtensilsCrossed className="h-3.5 w-3.5" />
+              ) : (
+                <Store className="h-3.5 w-3.5" />
+              )}
+              {ROTULO_TIPO_ENTREGA[pedido.tipo_entrega]}
             </span>
             <span>· {haQuantoTempo(pedido.criado_em)}</span>
             {pedido.retirada_prevista && (
@@ -152,9 +160,7 @@ function CartaoPedido({ pedido }: { pedido: Pedido }) {
             {pago
               ? 'Pago'
               : pedido.forma_pagamento === 'local'
-                ? ehEntrega
-                  ? 'Paga na entrega'
-                  : 'Paga na retirada'
+                ? 'Cobrar no balcão'
                 : 'Pendente'}
           </Selo>
         </div>
@@ -310,7 +316,7 @@ function CartaoPedido({ pedido }: { pedido: Pedido }) {
             ) : (
               <Check className="h-4 w-4" />
             )}
-            {ehEntrega ? 'Saiu para entrega' : 'Cliente retirou'}
+            {ehEntrega ? 'Saiu para entrega' : ehNoLocal ? 'Cliente pegou' : 'Cliente retirou'}
           </Botao>
         )}
 

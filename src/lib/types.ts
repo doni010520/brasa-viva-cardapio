@@ -38,6 +38,8 @@ export type Produto = {
   disponivel: boolean
   destaque: boolean
   ordem: number
+  /** 'ambos' | 'so_local' (buffet) | 'so_viagem' (marmita embalada) */
+  modo_consumo: 'ambos' | 'so_local' | 'so_viagem'
   grupos_opcoes?: GrupoOpcoes[]
 }
 
@@ -63,7 +65,15 @@ export type Configuracoes = {
   aceita_pix: boolean
   aceita_cartao: boolean
   pix_expira_min: number
-  // entrega
+  // campanha pós-pagamento
+  instagram_url: string | null
+  campanha_ativa: boolean
+  campanha_titulo: string | null
+  campanha_texto: string | null
+  campanha_botao: string | null
+  campanha_emoji: string | null
+  // onde a casa atende
+  aceita_consumo_local: boolean
   aceita_retirada: boolean
   aceita_entrega: boolean
   tempo_entrega_min: number
@@ -111,7 +121,17 @@ export const STATUS_PEDIDO = [
 export type StatusPedido = (typeof STATUS_PEDIDO)[number]
 export type StatusPagamento = 'pendente' | 'pago' | 'falhou' | 'estornado'
 export type FormaPagamento = 'online' | 'local'
-export type TipoEntrega = 'retirada' | 'entrega'
+
+/** Onde o pedido vai ser consumido. */
+export type TipoEntrega = 'local' | 'retirada' | 'entrega'
+
+/**
+ * A primeira pergunta do site: a pessoa está no salão ou vai levar?
+ * Guardado em cookie, porque o cardápio muda conforme a resposta
+ * (buffet livre só existe para quem está no restaurante).
+ */
+export type ModoConsumo = 'local' | 'viagem'
+export const COOKIE_MODO = 'modo_consumo'
 
 export type OpcaoEscolhida = {
   id: string // id da opção no banco — o servidor revalida o preço por aqui
@@ -181,17 +201,30 @@ export type ItemCarrinho = {
   quantidade: number
 }
 
-/** O rótulo do fim muda conforme o pedido é retirada ou entrega. */
+/** O rótulo do fim muda conforme o pedido é consumido no salão, retirado ou entregue. */
 export function rotuloStatus(status: StatusPedido, tipo: TipoEntrega = 'retirada') {
   const entrega = tipo === 'entrega'
+  const noLocal = tipo === 'local'
+
   const mapa: Record<StatusPedido, string> = {
     aguardando_pagamento: 'Aguardando pagamento',
-    recebido: 'Pedido recebido',
+    recebido: noLocal ? 'Pago, pode se servir' : 'Pedido recebido',
     em_preparo: 'Em preparo',
-    pronto: entrega ? 'Pronto, aguardando entregador' : 'Pronto para retirada',
+    pronto: entrega
+      ? 'Pronto, aguardando entregador'
+      : noLocal
+        ? 'Pronto, pegue no balcão'
+        : 'Pronto para retirada',
     saiu_para_entrega: 'Saiu para entrega',
-    retirado: entrega ? 'Entregue' : 'Retirado',
+    retirado: entrega ? 'Entregue' : noLocal ? 'Consumido' : 'Retirado',
     cancelado: 'Cancelado',
   }
   return mapa[status]
+}
+
+/** Como o modo de consumo aparece para o pessoal do balcão. */
+export const ROTULO_TIPO_ENTREGA: Record<TipoEntrega, string> = {
+  local: 'No salão',
+  retirada: 'Retirada',
+  entrega: 'Entrega',
 }

@@ -36,7 +36,11 @@ export default async function PaginaComanda({ params }: { params: Promise<{ id: 
 
       <p className="text-center text-3xl font-black">#{codigo}</p>
       <p className="text-center text-sm font-bold uppercase">
-        {ehEntrega ? '>> ENTREGA <<' : '>> RETIRADA <<'}
+        {pedido.tipo_entrega === 'entrega'
+          ? '>> ENTREGA <<'
+          : pedido.tipo_entrega === 'local'
+            ? '>> SALAO <<'
+            : '>> RETIRADA <<'}
       </p>
 
       <Divisor />
@@ -115,9 +119,8 @@ export default async function PaginaComanda({ params }: { params: Promise<{ id: 
         {pedido.status_pagamento === 'pago'
           ? '*** PAGO ***'
           : pedido.forma_pagamento === 'local'
-            ? ehEntrega
-              ? '*** COBRAR NA ENTREGA ***'
-              : '*** COBRAR NO BALCAO ***'
+            ? // entrega é sempre paga pelo site, então "local" só existe na retirada
+              '*** COBRAR NO BALCAO ***'
             : '*** PAGAMENTO PENDENTE ***'}
       </p>
 

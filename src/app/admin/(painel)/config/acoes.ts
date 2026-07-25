@@ -25,8 +25,21 @@ const esquemaConfig = z.object({
   aceita_pix: z.boolean(),
   aceita_cartao: z.boolean(),
   pix_expira_min: z.coerce.number().int().min(5).max(1440),
+  aceita_consumo_local: z.boolean(),
   aceita_retirada: z.boolean(),
   aceita_entrega: z.boolean(),
+  // campanha pós-pagamento
+  instagram_url: z
+    .string()
+    .trim()
+    .max(200)
+    .optional()
+    .refine((v) => !v || /^https?:\/\//i.test(v), 'O link do Instagram precisa começar com https://'),
+  campanha_ativa: z.boolean(),
+  campanha_titulo: z.string().trim().max(60).optional(),
+  campanha_texto: z.string().trim().max(280).optional(),
+  campanha_botao: z.string().trim().max(40).optional(),
+  campanha_emoji: z.string().trim().max(8).optional(),
   tempo_entrega_min: z.coerce.number().int().min(0).max(480),
   entrega_gratis_acima_centavos: z.coerce.number().int().min(0).max(100_000_00).nullable(),
 })
@@ -47,8 +60,11 @@ export async function salvarConfiguracoesAction(entrada: unknown): Promise<Respo
   if (!dados.aceita_pagamento_online && !dados.aceita_pagamento_local) {
     return { ok: false, erro: 'Deixe pelo menos uma forma de pagamento ligada.' }
   }
-  if (!dados.aceita_retirada && !dados.aceita_entrega) {
-    return { ok: false, erro: 'Deixe pelo menos retirada ou entrega ligada.' }
+  if (!dados.aceita_consumo_local && !dados.aceita_retirada && !dados.aceita_entrega) {
+    return { ok: false, erro: 'Deixe pelo menos uma forma de atender ligada.' }
+  }
+  if (dados.campanha_ativa && !dados.instagram_url) {
+    return { ok: false, erro: 'Para ligar a campanha, informe o link do Instagram.' }
   }
   if (dados.aceita_pagamento_online && !dados.aceita_pix && !dados.aceita_cartao) {
     return {
@@ -69,6 +85,11 @@ export async function salvarConfiguracoesAction(entrada: unknown): Promise<Respo
       endereco: dados.endereco || null,
       chave_pix: dados.chave_pix || null,
       entrega_gratis_acima_centavos: dados.entrega_gratis_acima_centavos || null,
+      instagram_url: dados.instagram_url || null,
+      campanha_titulo: dados.campanha_titulo || null,
+      campanha_texto: dados.campanha_texto || null,
+      campanha_botao: dados.campanha_botao || null,
+      campanha_emoji: dados.campanha_emoji || null,
     })
     .eq('id', 1)
 

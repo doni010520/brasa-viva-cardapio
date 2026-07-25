@@ -94,10 +94,9 @@ export async function avisarPedidoConfirmado(
     entrega
       ? `Entrega${hora ? ` prevista para as ${hora}` : ''}.`
       : `Retirada no balcão${hora ? ` a partir das ${hora}` : ''}.`,
+    // entrega é sempre paga pelo site; "local" só acontece na retirada
     pedido.forma_pagamento === 'local'
-      ? entrega
-        ? `Pagamento na entrega.`
-        : `Pagamento no balcão, na hora de retirar.`
+      ? `Pagamento no balcão, na hora de retirar.`
       : `Pagamento confirmado. 👍`,
     ``,
     `Acompanhe por aqui:`,

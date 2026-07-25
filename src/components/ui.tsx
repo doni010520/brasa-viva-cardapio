@@ -33,48 +33,47 @@ export function Botao({
   )
 }
 
+/*
+ * 16px em celular E tablet; 14px só no desktop de verdade (lg, 1024px).
+ * O Safari do iPhone e do iPad dá zoom sozinho quando o campo tem fonte menor
+ * que 16px, e a tela inteira pula quando se toca no campo. O corte em `sm`
+ * (640px) deixaria o tablet do restaurante de fora.
+ */
+const CAMPO_BASE =
+  'w-full rounded-xl border border-tinta-200 bg-white px-3.5 py-2.5 text-base lg:text-sm ' +
+  'placeholder:text-tinta-400 focus:border-tinta-400 focus:outline-none'
+
 export function Campo({
   className,
   ...props
 }: React.InputHTMLAttributes<HTMLInputElement>) {
-  return (
-    <input
-      className={cn(
-        'w-full rounded-xl border border-tinta-200 bg-white px-3.5 py-2.5 text-sm',
-        'placeholder:text-tinta-400 focus:border-tinta-400 focus:outline-none',
-        'disabled:bg-tinta-100',
-        className
-      )}
-      {...props}
-    />
-  )
+  return <input className={cn(CAMPO_BASE, 'disabled:bg-tinta-100', className)} {...props} />
 }
 
 export function AreaTexto({
   className,
   ...props
 }: React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
-  return (
-    <textarea
-      className={cn(
-        'w-full rounded-xl border border-tinta-200 bg-white px-3.5 py-2.5 text-sm',
-        'placeholder:text-tinta-400 focus:border-tinta-400 focus:outline-none',
-        className
-      )}
-      {...props}
-    />
-  )
+  return <textarea className={cn(CAMPO_BASE, className)} {...props} />
 }
 
 export function Selecao({
   className,
   ...props
 }: React.SelectHTMLAttributes<HTMLSelectElement>) {
+  return <select className={cn(CAMPO_BASE, 'min-h-11', className)} {...props} />
+}
+
+/** Botão só com ícone. Garante os 40px de área de toque. */
+export function BotaoIcone({
+  className,
+  ...props
+}: React.ButtonHTMLAttributes<HTMLButtonElement>) {
   return (
-    <select
+    <button
       className={cn(
-        'w-full rounded-xl border border-tinta-200 bg-white px-3.5 py-2.5 text-sm',
-        'focus:border-tinta-400 focus:outline-none',
+        'toque rounded-lg text-tinta-500 transition hover:bg-tinta-100',
+        'disabled:cursor-not-allowed disabled:opacity-50',
         className
       )}
       {...props}

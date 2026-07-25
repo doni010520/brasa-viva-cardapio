@@ -188,9 +188,7 @@ export default async function PaginaPedido({ params }: { params: Promise<{ id: s
             {pedido.status_pagamento === 'pago'
               ? 'Pago'
               : pedido.forma_pagamento === 'local'
-                ? ehEntrega
-                  ? 'Pagar na entrega'
-                  : 'Pagar na retirada'
+                ? 'Pagar na retirada'
                 : 'Pagamento pendente'}
           </Selo>
         </div>

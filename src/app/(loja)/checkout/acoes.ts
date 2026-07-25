@@ -25,7 +25,7 @@ const esquemaPedido = z.object({
   email: z.string().trim().email('E-mail inválido.').max(120).optional().or(z.literal('')),
   cpf: z.string().trim().max(20).optional(),
   formaPagamento: z.enum(['online', 'local']),
-  tipoEntrega: z.enum(['retirada', 'entrega']),
+  tipoEntrega: z.enum(['local', 'retirada', 'entrega']),
   retiradaPrevista: z.string().datetime().nullable().optional(),
   cupom: z.string().trim().max(30).optional(),
   itens: z.array(esquemaItem).min(1, 'Seu carrinho está vazio.').max(60),
@@ -77,13 +77,18 @@ export async function criarPedidoAction(entrada: unknown): Promise<RespostaCheck
     return { ok: false, erro: 'Telefone inválido. Use DDD + número.' }
   }
 
-  // ---------------------------------------------------- forma de entrega
+  // ---------------------------------------------------- onde vai comer
   const ehEntrega = dados.tipoEntrega === 'entrega'
+  const ehNoLocal = dados.tipoEntrega === 'local'
+
   if (ehEntrega && !config.aceita_entrega) {
     return { ok: false, erro: 'No momento não estamos entregando, só retirada.' }
   }
-  if (!ehEntrega && !config.aceita_retirada) {
-    return { ok: false, erro: 'No momento só trabalhamos com entrega.' }
+  if (dados.tipoEntrega === 'retirada' && !config.aceita_retirada) {
+    return { ok: false, erro: 'No momento não estamos com retirada no balcão.' }
+  }
+  if (ehNoLocal && !config.aceita_consumo_local) {
+    return { ok: false, erro: 'No momento não estamos atendendo no salão.' }
   }
 
   let bairro: Bairro | null = null
@@ -111,6 +116,16 @@ export async function criarPedidoAction(entrada: unknown): Promise<RespostaCheck
   }
   if (dados.formaPagamento === 'local' && !config.aceita_pagamento_local) {
     return { ok: false, erro: 'No momento só aceitamos pagamento online.' }
+  }
+
+  // O entregador não recebe dinheiro. Quem quer pagar na hora, retira no balcão.
+  // O checkout já esconde a opção; esta é a trava que vale, porque a de cima
+  // é só interface e dá para contornar.
+  if (dados.formaPagamento === 'local' && ehEntrega) {
+    return {
+      ok: false,
+      erro: 'Pedido para entrega precisa ser pago pelo site. Dinheiro só na retirada no balcão.',
+    }
   }
   if (dados.formaPagamento === 'online' && !mercadoPagoConfigurado()) {
     return {
@@ -201,7 +216,12 @@ export async function criarPedidoAction(entrada: unknown): Promise<RespostaCheck
     // aviso é bônus: se o WhatsApp falhar, o pedido continua valendo
     await avisarPedidoConfirmado(pedido, config.nome, `${base}/pedido/${pedido.id}`)
 
-    return { ok: true, pedidoId: pedido.id, destino: `/pedido/${pedido.id}`, externo: false }
+    return {
+      ok: true,
+      pedidoId: pedido.id,
+      destino: `/pedido/${pedido.id}/obrigado`,
+      externo: false,
+    }
   }
 
   // Pagamento online: o pedido já existe como "aguardando_pagamento" e o cliente

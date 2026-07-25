@@ -49,7 +49,7 @@ export function PainelPix({
       const resposta = await verificarPagamentoAction(pedidoId)
       if (resposta.pago) {
         clearInterval(consulta)
-        router.refresh()
+        router.push(`/pedido/${pedidoId}/obrigado`)
       }
     }, 5000)
     return () => clearInterval(consulta)

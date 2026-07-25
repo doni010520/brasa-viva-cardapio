@@ -3,17 +3,20 @@ import { FormularioCheckout } from '@/components/loja/formulario-checkout'
 import { Botao, Vazio } from '@/components/ui'
 import { buscarBairros, buscarConfiguracoes, buscarHorarios } from '@/lib/dados'
 import { mercadoPagoConfigurado } from '@/lib/mercadopago'
+import { modoAtual } from '@/lib/modo'
 import { estadoDaLoja, horariosDeRetirada } from '@/lib/tempo'
 
 export const dynamic = 'force-dynamic'
 
 export default async function PaginaCheckout() {
-  const [config, horarios, bairros] = await Promise.all([
+  const [config, horarios, bairros, modo] = await Promise.all([
     buscarConfiguracoes(),
     buscarHorarios(),
     buscarBairros(),
+    modoAtual(),
   ])
   const loja = estadoDaLoja(config, horarios)
+  const noLocal = modo === 'local' && config.aceita_consumo_local
 
   if (!loja.aberta) {
     return (
@@ -29,6 +32,7 @@ export default async function PaginaCheckout() {
 
   return (
     <FormularioCheckout
+      noLocal={noLocal}
       pedidoMinimoCentavos={config.pedido_minimo_centavos}
       aceitaOnline={config.aceita_pagamento_online && mercadoPagoConfigurado()}
       aceitaLocal={config.aceita_pagamento_local}

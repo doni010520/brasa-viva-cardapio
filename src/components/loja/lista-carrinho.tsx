@@ -63,7 +63,7 @@ export function ListaCarrinho({
                 <h2 className="font-semibold text-tinta-900">{item.nome}</h2>
                 <button
                   onClick={() => remover(item.linhaId)}
-                  className="shrink-0 rounded-lg p-1.5 text-tinta-400 transition hover:bg-marca-50 hover:text-marca-600"
+                  className="toque shrink-0 rounded-lg text-tinta-400 transition hover:bg-marca-50 hover:text-marca-600"
                   aria-label={`Remover ${item.nome}`}
                 >
                   <Trash2 className="h-4 w-4" />
@@ -89,7 +89,7 @@ export function ListaCarrinho({
                 <div className="flex items-center gap-1 rounded-xl border border-tinta-200 p-0.5">
                   <button
                     onClick={() => alterarQuantidade(item.linhaId, item.quantidade - 1)}
-                    className="rounded-lg p-1.5 text-tinta-600 hover:bg-tinta-100"
+                    className="toque rounded-lg text-tinta-600 hover:bg-tinta-100"
                     aria-label="Diminuir"
                   >
                     <Minus className="h-3.5 w-3.5" />
@@ -99,7 +99,7 @@ export function ListaCarrinho({
                   </span>
                   <button
                     onClick={() => alterarQuantidade(item.linhaId, item.quantidade + 1)}
-                    className="rounded-lg p-1.5 text-tinta-600 hover:bg-tinta-100"
+                    className="toque rounded-lg text-tinta-600 hover:bg-tinta-100"
                     aria-label="Aumentar"
                   >
                     <Plus className="h-3.5 w-3.5" />

@@ -77,7 +77,7 @@ export function Cardapio({
           {busca && (
             <button
               onClick={() => setBusca('')}
-              className="absolute top-1/2 right-2 -translate-y-1/2 rounded-lg p-1.5 text-tinta-400 hover:bg-tinta-100"
+              className="toque absolute top-1/2 right-1 -translate-y-1/2 rounded-lg text-tinta-400 hover:bg-tinta-100"
               aria-label="Limpar busca"
             >
               <X className="h-4 w-4" />
@@ -174,7 +174,7 @@ function CartaoProduto({ produto, onAbrir }: { produto: Produto; onAbrir: () => 
         <div className="flex items-center gap-2">
           <h3 className="truncate font-semibold text-tinta-900">{produto.nome}</h3>
           {produto.destaque && produto.disponivel && (
-            <span className="bg-marca shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold tracking-wide text-white uppercase">
+            <span className="bg-marca shrink-0 rounded-full px-2 py-0.5 text-[11px] font-bold tracking-wide text-white uppercase">
               Destaque
             </span>
           )}

@@ -39,12 +39,32 @@ pagina.on('console', (m) => m.type() === 'error' && errosDeConsole.push(m.text()
 pagina.on('pageerror', (e) => errosDeConsole.push(String(e)))
 
 try {
+  // ------------------------------------------------ 0. escolha do modo
+  console.log('\n0) Onde vou comer')
+  await pagina.goto(BASE, { waitUntil: 'networkidle' })
+  conferir(
+    await pagina.getByText('Onde você vai comer hoje?').isVisible(),
+    'site pergunta antes de mostrar o cardápio'
+  )
+  conferir(
+    await pagina.getByRole('button', { name: /Estou no restaurante/ }).isVisible(),
+    'opção "estou no restaurante" disponível'
+  )
+  await pagina.screenshot({ path: `${TIROS}/00-escolha-modo.png` })
+
+  // segue como quem vai levar
+  await pagina.getByRole('button', { name: /Pedido para/ }).click()
+  await pagina.waitForTimeout(1800)
+
   // ------------------------------------------------ 1. cardápio
   console.log('\n1) Cardápio do cliente')
-  await pagina.goto(BASE, { waitUntil: 'networkidle' })
   conferir(
     await pagina.getByRole('heading', { name: 'Churrascaria Brasa Viva' }).isVisible(),
     'nome da churrascaria na tela'
+  )
+  conferir(
+    (await pagina.getByRole('button', { name: /Buffet livre/ }).count()) === 0,
+    'buffet livre NÃO aparece para quem vai levar'
   )
   conferir(await pagina.getByText('Aberto agora').isVisible(), 'loja marcada como aberta')
   await pagina.screenshot({ path: `${TIROS}/01-cardapio.png`, fullPage: false })
@@ -52,10 +72,29 @@ try {
   // busca
   await pagina.getByPlaceholder('Buscar no cardápio...').fill('picanha')
   await pagina.waitForTimeout(400)
-  const achados = await pagina.getByText('Espeto de picanha').count()
-  conferir(achados > 0, 'busca por "picanha" encontra o espeto')
+  const achados = await pagina.getByRole('button', { name: /[Pp]icanha/ }).count()
+  conferir(achados > 0, `busca por "picanha" encontra ${achados} item(ns)`)
   await pagina.getByPlaceholder('Buscar no cardápio...').fill('')
   await pagina.waitForTimeout(300)
+
+  // ------------------------------------- 1b. o buffet aparece no outro modo
+  // Contexto SEPARADO de propósito: o modo vive num cookie, e mexer nele
+  // aqui dentro contaminaria o pedido que está sendo montado na outra aba.
+  const contextoSalao = await navegador.newContext({ viewport: { width: 420, height: 900 } })
+  const paraLocal = await contextoSalao.newPage()
+  await paraLocal.goto(BASE, { waitUntil: 'networkidle' })
+  await paraLocal.getByRole('button', { name: /Estou no restaurante/ }).click()
+  await paraLocal.waitForTimeout(1500)
+  conferir(
+    (await paraLocal.getByRole('button', { name: /Buffet livre/ }).count()) > 0,
+    'buffet livre APARECE para quem está no restaurante'
+  )
+  conferir(
+    (await paraLocal.getByRole('button', { name: /Marmita do dia/ }).count()) === 0,
+    'marmita embalada NÃO aparece para quem está no salão'
+  )
+  await paraLocal.screenshot({ path: `${TIROS}/00b-cardapio-salao.png` })
+  await contextoSalao.close()
 
   // ------------------------------------- 2. produto com opção obrigatória
   console.log('\n2) Produto com grupo de opções')
@@ -119,18 +158,30 @@ try {
   await pagina.waitForURL('**/pedido/**', { timeout: 20000 })
   await pagina.waitForTimeout(800)
 
-  // ------------------------------------------------ 6. acompanhamento
-  console.log('\n5) Acompanhamento do pedido')
-  const urlPedido = pagina.url()
-  const pedidoId = urlPedido.split('/pedido/')[1]
+  // ------------------------------------------ 5. tela de agradecimento
+  console.log('\n5) Agradecimento e campanha')
+  const pedidoId = pagina.url().split('/pedido/')[1].split('/')[0]
   conferir(Boolean(pedidoId), `pedido criado: ${pedidoId}`)
+  conferir(
+    pagina.url().endsWith('/obrigado'),
+    'cliente cai na tela de agradecimento depois de fechar'
+  )
+  conferir(
+    await pagina.getByText(/Pedido confirmado|Pagamento confirmado/).isVisible(),
+    'confirmação aparece'
+  )
+  const codigo = await pagina.locator('.text-6xl').textContent()
+  console.log(`     código de retirada: ${codigo?.trim()}`)
+  await pagina.screenshot({ path: `${TIROS}/05-obrigado.png`, fullPage: true })
+
+  // ------------------------------------------------ 5b. acompanhamento
+  await pagina.goto(`${BASE}/pedido/${pedidoId}`, { waitUntil: 'networkidle' })
+  await pagina.waitForTimeout(600)
   conferir(
     await pagina.getByText('Pedido recebido').isVisible(),
     'pedido já entrou como "recebido" (pagamento na retirada)'
   )
-  const codigo = await pagina.locator('.text-6xl').textContent()
-  console.log(`     código de retirada: ${codigo?.trim()}`)
-  await pagina.screenshot({ path: `${TIROS}/05-acompanhamento.png`, fullPage: true })
+  await pagina.screenshot({ path: `${TIROS}/05b-acompanhamento.png`, fullPage: true })
 
   // ------------------------------------------------ 7. painel do dono
   console.log('\n6) Painel do restaurante')
@@ -228,7 +279,10 @@ try {
   console.log('\n10) Botão "esgotou"')
   await admin.goto(`${BASE}/admin/cardapio`, { waitUntil: 'networkidle' })
   await admin.waitForTimeout(800)
-  const aVenda = admin.getByRole('button', { name: /à venda\. Marcar como esgotado/i })
+  // um item que existe no cardápio de viagem (buffet só aparece no salão)
+  const aVenda = admin.getByRole('button', {
+    name: /Churrasco misto: à venda\. Marcar como esgotado/i,
+  })
   const nome = (await aVenda.first().getAttribute('aria-label'))?.split(':')[0]
   await aVenda.first().click()
   await admin.waitForTimeout(2500)

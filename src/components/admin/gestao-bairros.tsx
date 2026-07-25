@@ -109,7 +109,7 @@ function LinhaBairro({
         type="button"
         onClick={excluir}
         disabled={apagando}
-        className="rounded-lg p-1.5 text-tinta-400 hover:text-marca-600"
+        className="toque rounded-lg text-tinta-400 hover:text-marca-600"
         aria-label={`Apagar ${bairro.nome}`}
       >
         {apagando ? (
@@ -228,7 +228,7 @@ function ModalBairro({
               type="checkbox"
               checked={ativo}
               onChange={(e) => setAtivo(e.target.checked)}
-              className="h-4 w-4 accent-black"
+              className="h-5 w-5 accent-black"
             />
             <span className="text-sm text-tinta-700">Entregando neste bairro</span>
           </label>

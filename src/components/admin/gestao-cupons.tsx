@@ -118,7 +118,7 @@ function LinhaCupom({
       <button
         onClick={excluir}
         disabled={apagando}
-        className="rounded-lg p-2 text-tinta-500 hover:bg-marca-50 hover:text-marca-600"
+        className="toque rounded-lg text-tinta-500 hover:bg-marca-50 hover:text-marca-600"
         aria-label={`Apagar cupom ${cupom.codigo}`}
       >
         {apagando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
@@ -262,7 +262,7 @@ function ModalCupom({ cupom, onFechar }: { cupom: Cupom | null; onFechar: () => 
               type="checkbox"
               checked={ativo}
               onChange={(e) => setAtivo(e.target.checked)}
-              className="h-4 w-4 accent-black"
+              className="h-5 w-5 accent-black"
             />
             <span className="text-sm text-tinta-700">Cupom ligado</span>
           </label>

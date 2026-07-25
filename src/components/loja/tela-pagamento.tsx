@@ -107,7 +107,13 @@ export function TelaPagamento({
               throw new Error(corpo.erro ?? 'falha no pagamento')
             }
 
-            if (corpo.aprovado || corpo.pendente) {
+            // aprovado (cartão) vai direto para o agradecimento;
+            // pendente (Pix) volta para a tela do pedido, que mostra o QR
+            if (corpo.aprovado) {
+              router.push(`/pedido/${pedidoId}/obrigado`)
+              return
+            }
+            if (corpo.pendente) {
               router.push(`/pedido/${pedidoId}`)
               return
             }
