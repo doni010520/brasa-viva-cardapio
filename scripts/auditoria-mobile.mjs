@@ -151,7 +151,7 @@ for (const aparelho of APARELHOS) {
   await pagina.screenshot({ path: `${TIROS}/${aparelho.nome}-01-escolha.png` })
 
   // entra como "vou levar"
-  const botaoViagem = pagina.getByRole('button', { name: /Pedido para/ })
+  const botaoViagem = pagina.getByRole('button', { name: /é para viagem/i })
   if (await botaoViagem.count()) {
     await botaoViagem.first().click()
     await pagina.waitForTimeout(1500)

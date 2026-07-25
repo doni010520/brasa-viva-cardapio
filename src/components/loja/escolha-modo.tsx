@@ -42,7 +42,7 @@ export function EscolhaModo({
       <div className="text-center">
         <h1 className="text-2xl font-black tracking-tight text-tinta-900">{nomeLoja}</h1>
         {descricao && <p className="mt-1 text-tinta-500">{descricao}</p>}
-        <p className="mt-6 font-semibold text-tinta-900">Onde você vai comer hoje?</p>
+        <p className="mt-6 font-semibold text-tinta-900">Você está no restaurante agora?</p>
         <p className="text-sm text-tinta-500">O cardápio muda conforme a sua resposta.</p>
       </div>
 
@@ -52,11 +52,11 @@ export function EscolhaModo({
             aoEscolher={() => escolher('local')}
             carregando={salvando}
             icone={<UtensilsCrossed className="h-6 w-6" />}
-            titulo="Estou no restaurante"
+            titulo="Sim, estou no salão"
             descricao={
               precoBuffetCentavos
-                ? 'Buffet livre e bebidas. Pague por aqui e sirva-se.'
-                : 'Peça e pague pelo celular, sem fila no caixa.'
+                ? 'Buffet livre e bebidas servidos na mesa. Pague pelo celular e sirva-se.'
+                : 'Peça da mesa e pague pelo celular, sem fila no caixa.'
             }
             destaque
           />
@@ -69,14 +69,14 @@ export function EscolhaModo({
             icone={aceitaEntrega ? <Bike className="h-6 w-6" /> : <Store className="h-6 w-6" />}
             titulo={
               aceitaEntrega && aceitaRetirada
-                ? 'Pedido para entrega ou retirada'
+                ? 'Não, é para viagem'
                 : aceitaEntrega
-                  ? 'Pedido para entrega'
-                  : 'Pedido para retirada'
+                  ? 'Não, é para entrega'
+                  : 'Não, é para retirada'
             }
             descricao={
               aceitaEntrega && aceitaRetirada
-                ? 'Marmitas, porções e bebidas. Você escolhe entre receber em casa ou buscar no balcão.'
+                ? 'Marmitas, porções e bebidas para receber em casa ou buscar no balcão.'
                 : aceitaEntrega
                   ? 'Marmitas, porções e bebidas entregues no seu endereço.'
                   : 'Marmitas, porções e bebidas para buscar no balcão.'

@@ -120,7 +120,7 @@ const pagina = await contexto.newPage()
 try {
   await pagina.goto(APP, { waitUntil: 'networkidle' })
   // o site pergunta onde a pessoa vai comer antes de mostrar o cardápio
-  const escolha = pagina.getByRole('button', { name: /Pedido para/ })
+  const escolha = pagina.getByRole('button', { name: /é para viagem/i })
   if (await escolha.count()) {
     await escolha.first().click()
     await pagina.waitForTimeout(1500)

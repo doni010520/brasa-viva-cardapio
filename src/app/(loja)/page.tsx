@@ -51,7 +51,7 @@ export default async function PaginaCardapio() {
         {modoEfetivo === 'local' && (
           <p className="mt-3 rounded-2xl bg-tinta-100 px-4 py-3 text-sm text-tinta-600">
             Comida <strong>no quilo</strong> é direto no balcão: sirva-se e pese na hora. Por
-            aqui você paga o buffet livre e as bebidas.
+            aqui você paga o buffet livre e as bebidas da sua mesa.
           </p>
         )}
 

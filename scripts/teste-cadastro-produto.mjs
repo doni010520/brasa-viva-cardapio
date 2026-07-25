@@ -204,7 +204,7 @@ try {
   console.log('\n5) O cliente vê?')
   const cliente = await (await navegador.newContext()).newPage()
   await cliente.goto(BASE, { waitUntil: 'networkidle' })
-  const escolha = cliente.getByRole('button', { name: /Pedido para/ })
+  const escolha = cliente.getByRole('button', { name: /é para viagem/i })
   if (await escolha.count()) {
     await escolha.first().click()
     await cliente.waitForTimeout(2000)

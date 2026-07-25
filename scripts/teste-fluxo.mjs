@@ -63,17 +63,17 @@ try {
   console.log('\n0) Onde vou comer')
   await pagina.goto(BASE, { waitUntil: 'networkidle' })
   conferir(
-    await pagina.getByText('Onde você vai comer hoje?').isVisible(),
+    await pagina.getByText('Você está no restaurante agora?').isVisible(),
     'site pergunta antes de mostrar o cardápio'
   )
   conferir(
-    await pagina.getByRole('button', { name: /Estou no restaurante/ }).isVisible(),
-    'opção "estou no restaurante" disponível'
+    await pagina.getByRole('button', { name: /estou no salão/i }).isVisible(),
+    'botões respondem a pergunta com sim e não'
   )
   await pagina.screenshot({ path: `${TIROS}/00-escolha-modo.png` })
 
   // segue como quem vai levar
-  await pagina.getByRole('button', { name: /Pedido para/ }).click()
+  await pagina.getByRole('button', { name: /é para viagem/i }).click()
   await pagina.waitForTimeout(1800)
 
   // ------------------------------------------------ 1. cardápio
@@ -103,7 +103,7 @@ try {
   const contextoSalao = await navegador.newContext({ viewport: { width: 420, height: 900 } })
   const paraLocal = await contextoSalao.newPage()
   await paraLocal.goto(BASE, { waitUntil: 'networkidle' })
-  await paraLocal.getByRole('button', { name: /Estou no restaurante/ }).click()
+  await paraLocal.getByRole('button', { name: /estou no salão/i }).click()
   await paraLocal.waitForTimeout(1500)
   conferir(
     (await paraLocal.getByRole('button', { name: /Buffet livre/ }).count()) > 0,
@@ -231,11 +231,10 @@ try {
   // avança o status
   console.log('\n7) Fluxo de status')
   await admin.getByRole('button', { name: /Começar preparo/ }).first().click()
-  await admin.waitForTimeout(2000)
-  conferir(
-    await admin.getByRole('button', { name: /Marcar como pronto/ }).first().isVisible(),
-    'pedido foi para "Em preparo"'
-  )
+  // espera a tela se atualizar em vez de cravar um tempo fixo
+  const botaoPronto = admin.getByRole('button', { name: /Marcar como pronto/ }).first()
+  await botaoPronto.waitFor({ state: 'visible', timeout: 20000 }).catch(() => {})
+  conferir(await botaoPronto.isVisible(), 'pedido foi para "Em preparo"')
 
   await admin.getByRole('button', { name: /Marcar como pronto/ }).first().click()
   // espera o painel se atualizar em vez de cravar um tempo fixo
