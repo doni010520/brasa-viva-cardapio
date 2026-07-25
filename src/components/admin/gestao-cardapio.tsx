@@ -211,6 +211,12 @@ function LinhaProduto({
         onClick={alternar}
         disabled={salvando}
         title={produto.disponivel ? 'Marcar como esgotado' : 'Voltar a vender'}
+        // no celular só o ícone aparece; sem isto o botão fica mudo para leitores de tela
+        aria-label={
+          produto.disponivel
+            ? `${produto.nome}: à venda. Marcar como esgotado`
+            : `${produto.nome}: esgotado. Voltar a vender`
+        }
         className={`flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-2 text-xs font-semibold transition ${
           produto.disponivel
             ? 'text-emerald-700 hover:bg-emerald-50'

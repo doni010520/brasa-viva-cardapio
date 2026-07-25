@@ -34,7 +34,8 @@ export function Marca({
       <img
         src={logoUrl}
         alt={nome}
-        className={`h-11 w-auto max-w-[190px] object-contain ${className}`}
+        // 56px: abaixo disso o nome dentro da logo fica ilegível no celular
+        className={`h-14 w-auto max-w-[200px] rounded-lg object-contain ${className}`}
       />
     )
   }
