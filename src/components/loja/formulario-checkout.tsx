@@ -12,6 +12,7 @@ import {
   CreditCard,
   Loader2,
   Store,
+  UtensilsCrossed,
 } from 'lucide-react'
 import { precoDaLinha, useCarrinho } from '@/components/carrinho-contexto'
 import { conferirCupomAction, criarPedidoAction } from '@/app/(loja)/checkout/acoes'
@@ -26,6 +27,7 @@ type DadosSalvos = {
   nome?: string
   telefone?: string
   email?: string
+  nascimento?: string
   enderecoRua?: string
   enderecoNumero?: string
   enderecoComplemento?: string
@@ -34,6 +36,9 @@ type DadosSalvos = {
 
 export function FormularioCheckout({
   noLocal,
+  mesa,
+  pedirAniversario,
+  brindeAniversario,
   pedidoMinimoCentavos,
   aceitaOnline,
   aceitaLocal,
@@ -46,6 +51,9 @@ export function FormularioCheckout({
   horariosRetirada,
 }: {
   noLocal: boolean
+  mesa: string | null
+  pedirAniversario: boolean
+  brindeAniversario: string | null
   pedidoMinimoCentavos: number
   aceitaOnline: boolean
   aceitaLocal: boolean
@@ -64,6 +72,7 @@ export function FormularioCheckout({
   const [nome, setNome] = useState('')
   const [telefone, setTelefone] = useState('')
   const [email, setEmail] = useState('')
+  const [nascimento, setNascimento] = useState('')
   const [observacoes, setObservacoes] = useState('')
   const [retirada, setRetirada] = useState(horariosRetirada[0]?.valor ?? '')
   const [formaPagamento, setFormaPagamento] = useState<FormaPagamento>(
@@ -96,6 +105,7 @@ export function FormularioCheckout({
       if (dados.nome) setNome(dados.nome)
       if (dados.telefone) setTelefone(dados.telefone)
       if (dados.email) setEmail(dados.email)
+      if (dados.nascimento) setNascimento(dados.nascimento)
       if (dados.enderecoRua) setEnderecoRua(dados.enderecoRua)
       if (dados.enderecoNumero) setEnderecoNumero(dados.enderecoNumero)
       if (dados.enderecoComplemento) setEnderecoComplemento(dados.enderecoComplemento)
@@ -186,6 +196,7 @@ export function FormularioCheckout({
         nome: nome.trim(),
         telefone: telefone.trim(),
         email: email.trim() || undefined,
+        nascimento: nascimento || undefined,
         observacoes: observacoes.trim() || undefined,
         formaPagamento,
         tipoEntrega,
@@ -208,6 +219,7 @@ export function FormularioCheckout({
         nome: nome.trim(),
         telefone,
         email: email.trim(),
+        nascimento,
         enderecoRua: enderecoRua.trim(),
         enderecoNumero: enderecoNumero.trim(),
         enderecoComplemento: enderecoComplemento.trim(),
@@ -244,6 +256,12 @@ export function FormularioCheckout({
       </Link>
 
       <h1 className="text-2xl font-black tracking-tight text-tinta-900">Fechar pedido</h1>
+      {mesa && (
+        <p className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-sm font-semibold text-emerald-700">
+          <UtensilsCrossed className="h-4 w-4" />
+          Mesa {mesa}
+        </p>
+      )}
       <p className="mt-1 text-sm text-tinta-500">
         {ehNoLocal
           ? 'Pague por aqui e apresente o código no salão.'
@@ -315,6 +333,26 @@ export function FormularioCheckout({
               A gente avisa por aqui quando o pedido estiver pronto.
             </p>
           </div>
+
+          {pedirAniversario && (
+            <div>
+              <Rotulo htmlFor="nascimento">
+                Seu aniversário <span className="font-normal text-tinta-400">(opcional)</span>
+              </Rotulo>
+              <Campo
+                id="nascimento"
+                type="date"
+                value={nascimento}
+                onChange={(e) => setNascimento(e.target.value)}
+                max={new Date().toISOString().slice(0, 10)}
+              />
+              {brindeAniversario && (
+                <p className="mt-1 text-xs text-emerald-700">
+                  🎁 No seu aniversário, {brindeAniversario}.
+                </p>
+              )}
+            </div>
+          )}
 
           {formaPagamento === 'online' && (
             <div>

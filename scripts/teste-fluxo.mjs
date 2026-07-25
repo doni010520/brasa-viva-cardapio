@@ -6,7 +6,7 @@
  * Uso:  node scripts/teste-fluxo.mjs
  */
 import { chromium } from 'playwright'
-import { mkdir } from 'node:fs/promises'
+import { mkdir, readFile } from 'node:fs/promises'
 
 const BASE = 'http://localhost:3000'
 const TIROS = 'C:/Users/adoni/cardapio-online/.testes'
@@ -28,6 +28,26 @@ function falha(mensagem) {
 }
 function conferir(condicao, mensagem) {
   condicao ? ok(mensagem) : falha(mensagem)
+}
+
+// Zera os pedidos antes de começar: com o painel cheio de sobras de execuções
+// anteriores, o teste clicava no card errado e acusava falha onde não havia.
+{
+  const env = {}
+  for (const l of (await readFile('C:/Users/adoni/cardapio-online/.env.local', 'utf8')).split('\n')) {
+    const t = l.trim()
+    if (!t || t.startsWith('#')) continue
+    const i = t.indexOf('=')
+    if (i > 0) env[t.slice(0, i).trim()] = t.slice(i + 1).trim()
+  }
+  await fetch(`https://api.supabase.com/v1/projects/${env.PROJECT_ID}/database/query`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${env.SUPABASE_ACCESS_TOKEN}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ query: 'delete from public.pedidos;' }),
+  })
 }
 
 const navegador = await chromium.launch()
@@ -218,11 +238,10 @@ try {
   )
 
   await admin.getByRole('button', { name: /Marcar como pronto/ }).first().click()
-  await admin.waitForTimeout(2000)
-  conferir(
-    await admin.getByRole('button', { name: /Cliente retirou/ }).first().isVisible(),
-    'pedido foi para "Pronto"'
-  )
+  // espera o painel se atualizar em vez de cravar um tempo fixo
+  const botaoRetirou = admin.getByRole('button', { name: /Cliente retirou/ }).first()
+  await botaoRetirou.waitFor({ state: 'visible', timeout: 20000 }).catch(() => {})
+  conferir(await botaoRetirou.isVisible(), 'pedido foi para "Pronto"')
   await admin.screenshot({ path: `${TIROS}/07-painel-pronto.png`, fullPage: true })
 
   // o cliente vê a mudança

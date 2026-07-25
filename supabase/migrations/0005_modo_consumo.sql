@@ -59,7 +59,16 @@ declare
   grupo uuid;
 begin
   -- ---------- 1. a casa não vende espeto ----------
+  -- Os produtos vão PRIMEIRO: produtos.categoria_id é "on delete set null",
+  -- então apagar só a categoria deixaria os espetos órfãos no banco —
+  -- invisíveis no cardápio, mas ainda ocupando a tabela.
+  delete from public.produtos
+   where categoria_id in (select id from public.categorias where lower(nome) = 'espetos');
+
   delete from public.categorias where lower(nome) = 'espetos';
+
+  -- limpa órfãos deixados por versões anteriores desta migração
+  delete from public.produtos where categoria_id is null;
 
   -- ---------- 2. "Pratos" vira "Marmitas" ----------
   update public.categorias

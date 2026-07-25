@@ -2,11 +2,21 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { BarChart3, BookOpen, Settings, Tag, UtensilsCrossed } from 'lucide-react'
+import {
+  BarChart3,
+  BookOpen,
+  QrCode,
+  Settings,
+  Tag,
+  Users,
+  UtensilsCrossed,
+} from 'lucide-react'
 
 const ITENS = [
   { href: '/admin', rotulo: 'Pedidos', icone: UtensilsCrossed },
   { href: '/admin/cardapio', rotulo: 'Cardápio', icone: BookOpen },
+  { href: '/admin/clientes', rotulo: 'Clientes', icone: Users },
+  { href: '/admin/mesas', rotulo: 'Mesas', icone: QrCode },
   { href: '/admin/cupons', rotulo: 'Cupons', icone: Tag },
   { href: '/admin/relatorios', rotulo: 'Relatórios', icone: BarChart3 },
   { href: '/admin/config', rotulo: 'Configurações', icone: Settings },

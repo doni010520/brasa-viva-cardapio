@@ -144,6 +144,7 @@ function CartaoPedido({ pedido }: { pedido: Pedido }) {
                 <Store className="h-3.5 w-3.5" />
               )}
               {ROTULO_TIPO_ENTREGA[pedido.tipo_entrega]}
+              {pedido.mesa_numero && ` · Mesa ${pedido.mesa_numero}`}
             </span>
             <span>· {haQuantoTempo(pedido.criado_em)}</span>
             {pedido.retirada_prevista && (

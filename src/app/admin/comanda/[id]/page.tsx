@@ -42,6 +42,9 @@ export default async function PaginaComanda({ params }: { params: Promise<{ id: 
             ? '>> SALAO <<'
             : '>> RETIRADA <<'}
       </p>
+      {pedido.mesa_numero && (
+        <p className="text-center text-2xl font-black">MESA {pedido.mesa_numero}</p>
+      )}
 
       <Divisor />
 

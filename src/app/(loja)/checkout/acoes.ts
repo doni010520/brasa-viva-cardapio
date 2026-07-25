@@ -7,6 +7,7 @@ import { conferirItens, type ItemEnviado } from '@/lib/montar-pedido'
 import { mercadoPagoConfigurado, urlBase } from '@/lib/mercadopago'
 import { criarClienteAdmin } from '@/lib/supabase/server'
 import { estadoDaLoja } from '@/lib/tempo'
+import { mesaAtual } from '@/lib/modo'
 import { apenasDigitos } from '@/lib/format'
 import { avisarPedidoConfirmado } from '@/lib/whatsapp'
 import type { Bairro } from '@/lib/types'
@@ -24,6 +25,13 @@ const esquemaPedido = z.object({
   observacoes: z.string().trim().max(300).optional(),
   email: z.string().trim().email('E-mail inválido.').max(120).optional().or(z.literal('')),
   cpf: z.string().trim().max(20).optional(),
+  // opcional de propósito: serve para o brinde de aniversário, nunca trava a venda
+  nascimento: z
+    .string()
+    .trim()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, 'Data de nascimento inválida.')
+    .optional()
+    .or(z.literal('')),
   formaPagamento: z.enum(['online', 'local']),
   tipoEntrega: z.enum(['local', 'retirada', 'entrega']),
   retiradaPrevista: z.string().datetime().nullable().optional(),
@@ -89,6 +97,23 @@ export async function criarPedidoAction(entrada: unknown): Promise<RespostaCheck
   }
   if (ehNoLocal && !config.aceita_consumo_local) {
     return { ok: false, erro: 'No momento não estamos atendendo no salão.' }
+  }
+
+  // Mesa vem do QR Code, nunca do formulário — o servidor confere se existe
+  // e está ativa antes de carimbar a comanda.
+  let mesa: { id: string; numero: string } | null = null
+  if (ehNoLocal) {
+    const numeroMesa = await mesaAtual()
+    if (numeroMesa) {
+      const supabaseMesa = criarClienteAdmin()
+      const { data } = await supabaseMesa
+        .from('mesas')
+        .select('id, numero')
+        .eq('numero', numeroMesa)
+        .eq('ativa', true)
+        .maybeSingle()
+      mesa = data ?? null
+    }
   }
 
   let bairro: Bairro | null = null
@@ -166,6 +191,9 @@ export async function criarPedidoAction(entrada: unknown): Promise<RespostaCheck
       cliente_telefone: dados.telefone,
       cliente_email: dados.email || null,
       cliente_cpf: dados.cpf ? dados.cpf.replace(/\D/g, '') : null,
+      cliente_nascimento: dados.nascimento || null,
+      mesa_id: mesa?.id ?? null,
+      mesa_numero: mesa?.numero ?? null,
       observacoes: dados.observacoes || null,
       subtotal_centavos: subtotalCentavos,
       desconto_centavos: descontoCentavos,

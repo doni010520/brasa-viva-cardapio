@@ -72,12 +72,42 @@ export type Configuracoes = {
   campanha_texto: string | null
   campanha_botao: string | null
   campanha_emoji: string | null
+  // relacionamento com o cliente
+  pedir_aniversario: boolean
+  brinde_aniversario: string | null
   // onde a casa atende
   aceita_consumo_local: boolean
   aceita_retirada: boolean
   aceita_entrega: boolean
   tempo_entrega_min: number
   entrega_gratis_acima_centavos: number | null
+}
+
+/**
+ * O cliente não cria conta: o telefone é a identidade e o cadastro se monta
+ * sozinho a cada pedido. Estes números são recalculados por gatilho no banco.
+ */
+export type Cliente = {
+  id: string
+  telefone: string
+  nome: string
+  email: string | null
+  data_nascimento: string | null
+  observacoes: string | null
+  aceita_promocoes: boolean
+  primeiro_pedido_em: string | null
+  ultimo_pedido_em: string | null
+  total_pedidos: number
+  total_gasto_centavos: number
+  criado_em: string
+}
+
+export type Mesa = {
+  id: string
+  numero: string
+  apelido: string | null
+  ativa: boolean
+  ordem: number
 }
 
 export type Bairro = {
@@ -166,6 +196,11 @@ export type Pedido = {
   status_pagamento: StatusPagamento
   status: StatusPedido
   retirada_prevista: string | null
+  // quem pediu (cadastro montado pelo telefone) e de qual mesa
+  cliente_id: string | null
+  cliente_nascimento: string | null
+  mesa_id: string | null
+  mesa_numero: string | null
   // entrega
   tipo_entrega: TipoEntrega
   entrega_taxa_centavos: number
