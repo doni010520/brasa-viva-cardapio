@@ -2,9 +2,11 @@ import Link from 'next/link'
 import { Cake, Phone, Search, TrendingDown } from 'lucide-react'
 import { Campo, Cartao, Selo, Vazio } from '@/components/ui'
 import { linkWhatsapp, moeda } from '@/lib/format'
-import { criarClienteAdmin } from '@/lib/supabase/server'
+import { criarClienteAdmin, usuarioAdminAtual } from '@/lib/supabase/server'
 import { partesNoFuso } from '@/lib/tempo'
 import type { Cliente } from '@/lib/types'
+
+import { redirect } from 'next/navigation'
 
 export const dynamic = 'force-dynamic'
 
@@ -27,6 +29,11 @@ export default async function PaginaClientes({
 }: {
   searchParams: Promise<{ busca?: string; filtro?: Filtro }>
 }) {
+
+  // O proxy já barra o atendente, mas a página confere de novo: se um dia o
+  // matcher mudar, esta tela não vira porta aberta sem ninguém perceber.
+  const quemEstaVendo = await usuarioAdminAtual()
+  if (!quemEstaVendo?.ehDono) redirect('/admin?motivo=so_dono')
   const { busca = '', filtro = 'todos' } = await searchParams
   const supabase = criarClienteAdmin()
 

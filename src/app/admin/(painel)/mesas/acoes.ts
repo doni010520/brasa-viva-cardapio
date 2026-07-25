@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
-import { criarClienteAdmin, exigirAdmin } from '@/lib/supabase/server'
+import { criarClienteAdmin, exigirDono } from '@/lib/supabase/server'
 
 type Resposta = { ok: true } | { ok: false; erro: string }
 
@@ -16,9 +16,9 @@ const esquema = z.object({
 
 export async function salvarMesaAction(entrada: unknown): Promise<Resposta> {
   try {
-    await exigirAdmin()
+    await exigirDono()
   } catch {
-    return { ok: false, erro: 'Sessão expirada. Entre de novo.' }
+    return { ok: false, erro: 'Só o dono pode fazer isso. Se a sessão expirou, entre de novo.' }
   }
 
   const analise = esquema.safeParse(entrada)
@@ -44,9 +44,9 @@ export async function salvarMesaAction(entrada: unknown): Promise<Resposta> {
 
 export async function excluirMesaAction(id: string): Promise<Resposta> {
   try {
-    await exigirAdmin()
+    await exigirDono()
   } catch {
-    return { ok: false, erro: 'Sessão expirada. Entre de novo.' }
+    return { ok: false, erro: 'Só o dono pode fazer isso. Se a sessão expirou, entre de novo.' }
   }
 
   const supabase = criarClienteAdmin()
@@ -60,9 +60,9 @@ export async function excluirMesaAction(id: string): Promise<Resposta> {
 /** Cria um bloco de mesas numeradas de uma vez, para não cadastrar uma a uma. */
 export async function criarMesasEmLoteAction(quantidade: number): Promise<Resposta> {
   try {
-    await exigirAdmin()
+    await exigirDono()
   } catch {
-    return { ok: false, erro: 'Sessão expirada. Entre de novo.' }
+    return { ok: false, erro: 'Só o dono pode fazer isso. Se a sessão expirou, entre de novo.' }
   }
 
   const total = Math.trunc(quantidade)

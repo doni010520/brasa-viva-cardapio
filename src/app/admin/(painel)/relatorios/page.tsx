@@ -12,6 +12,10 @@ import {
   type Periodo,
 } from '@/lib/relatorios'
 
+import { redirect } from 'next/navigation'
+
+import { usuarioAdminAtual } from '@/lib/supabase/server'
+
 export const dynamic = 'force-dynamic'
 
 export default async function PaginaRelatorios({
@@ -19,6 +23,11 @@ export default async function PaginaRelatorios({
 }: {
   searchParams: Promise<{ periodo?: string }>
 }) {
+
+  // O proxy já barra o atendente, mas a página confere de novo: se um dia o
+  // matcher mudar, esta tela não vira porta aberta sem ninguém perceber.
+  const quemEstaVendo = await usuarioAdminAtual()
+  if (!quemEstaVendo?.ehDono) redirect('/admin?motivo=so_dono')
   const { periodo: bruto } = await searchParams
   const periodo: Periodo = ehPeriodo(bruto) ? bruto : '30'
 

@@ -1,9 +1,9 @@
 import Link from 'next/link'
-import { notFound } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
 import { ArrowLeft, Cake, Phone } from 'lucide-react'
 import { Cartao, Selo, Vazio } from '@/components/ui'
 import { linkWhatsapp, moeda } from '@/lib/format'
-import { criarClienteAdmin } from '@/lib/supabase/server'
+import { criarClienteAdmin, usuarioAdminAtual } from '@/lib/supabase/server'
 import { dataHoraCurta } from '@/lib/tempo'
 import { ROTULO_TIPO_ENTREGA, rotuloStatus, type Cliente, type Pedido } from '@/lib/types'
 
@@ -11,6 +11,11 @@ export const dynamic = 'force-dynamic'
 
 /** Ficha do cliente: o histórico completo dele, para o dono conhecer quem compra. */
 export default async function PaginaCliente({ params }: { params: Promise<{ id: string }> }) {
+
+  // O proxy já barra o atendente, mas a página confere de novo: se um dia o
+  // matcher mudar, esta tela não vira porta aberta sem ninguém perceber.
+  const quemEstaVendo = await usuarioAdminAtual()
+  if (!quemEstaVendo?.ehDono) redirect('/admin?motivo=so_dono')
   const { id } = await params
   const supabase = criarClienteAdmin()
 

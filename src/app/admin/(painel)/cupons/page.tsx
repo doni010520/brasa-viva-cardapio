@@ -1,10 +1,17 @@
 import { GestaoCupons } from '@/components/admin/gestao-cupons'
-import { criarClienteAdmin } from '@/lib/supabase/server'
+import { criarClienteAdmin, usuarioAdminAtual } from '@/lib/supabase/server'
 import type { Cupom } from '@/lib/types'
+
+import { redirect } from 'next/navigation'
 
 export const dynamic = 'force-dynamic'
 
 export default async function PaginaCupons() {
+
+  // O proxy já barra o atendente, mas a página confere de novo: se um dia o
+  // matcher mudar, esta tela não vira porta aberta sem ninguém perceber.
+  const quemEstaVendo = await usuarioAdminAtual()
+  if (!quemEstaVendo?.ehDono) redirect('/admin?motivo=so_dono')
   const supabase = criarClienteAdmin()
   const { data } = await supabase.from('cupons').select('*').order('criado_em', { ascending: false })
 

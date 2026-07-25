@@ -2,15 +2,25 @@ import Link from 'next/link'
 import { MapPin, Phone } from 'lucide-react'
 import { ProvedorCarrinho } from '@/components/carrinho-contexto'
 import { BotaoCarrinho } from '@/components/loja/botao-carrinho'
+import { FaixaModo } from '@/components/loja/faixa-modo'
 import { Marca } from '@/components/marca'
 import { buscarConfiguracoes, buscarHorarios } from '@/lib/dados'
+import { mesaAtual, modoAtual } from '@/lib/modo'
 import { estadoDaLoja } from '@/lib/tempo'
 
 export const dynamic = 'force-dynamic'
 
 export default async function LayoutLoja({ children }: { children: React.ReactNode }) {
-  const [config, horarios] = await Promise.all([buscarConfiguracoes(), buscarHorarios()])
+  const [config, horarios, modo, mesa] = await Promise.all([
+    buscarConfiguracoes(),
+    buscarHorarios(),
+    modoAtual(),
+    mesaAtual(),
+  ])
   const loja = estadoDaLoja(config, horarios)
+
+  // a casa atende dos dois jeitos? então vale avisar em qual deles a pessoa está
+  const podeTrocar = config.aceita_consumo_local && (config.aceita_retirada || config.aceita_entrega)
 
   return (
     <ProvedorCarrinho>
@@ -46,6 +56,12 @@ export default async function LayoutLoja({ children }: { children: React.ReactNo
             )}
             {!loja.aberta && loja.motivo && <span className="text-tinta-400">{loja.motivo}</span>}
           </div>
+
+          {/* Faixa de contexto: acompanha o cliente em todas as telas para
+              ele nunca fechar um pedido no modo errado. */}
+          {modo && podeTrocar && (
+            <FaixaModo modo={modo} mesa={modo === 'local' ? mesa : null} />
+          )}
         </header>
 
         <main className="mx-auto w-full max-w-3xl flex-1 px-4 pb-28">{children}</main>

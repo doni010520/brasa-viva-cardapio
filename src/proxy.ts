@@ -2,12 +2,20 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 /**
- * Renova a sessão do Supabase a cada requisição e barra o painel para quem não
- * está logado. (No Next.js 16 este arquivo se chama `proxy`, não mais `middleware`.)
+ * Renova a sessão do Supabase a cada requisição e decide quem entra onde.
+ * (No Next.js 16 este arquivo se chama `proxy`, não mais `middleware`.)
  *
- * Isto é a primeira tranca, não a única: cada server action do admin também
- * chama `exigirAdmin()`.
+ * Isto é a PRIMEIRA tranca, não a única: cada server action e cada página
+ * também confere o perfil. Esconder botão não é segurança.
  */
+
+/** O atendente só precisa disto para tocar o balcão. */
+const LIBERADO_PARA_ATENDENTE = [
+  /^\/admin$/,
+  /^\/admin\/cardapio$/, // a lista, para marcar item esgotado
+  /^\/admin\/comanda\//, // reimprimir comanda
+]
+
 export async function proxy(request: NextRequest) {
   let resposta = NextResponse.next({ request })
 
@@ -51,6 +59,30 @@ export async function proxy(request: NextRequest) {
     destino.pathname = '/admin'
     destino.search = ''
     return NextResponse.redirect(destino)
+  }
+
+  // ------------------------------------------------- perfil
+  if (user && rota.startsWith('/admin') && !ehLogin) {
+    const { data: perfil } = await supabase
+      .from('admins')
+      .select('papel, ativo')
+      .eq('user_id', user.id)
+      .maybeSingle()
+
+    // desligado pelo dono, ou sem cadastro na equipe: não entra
+    if (!perfil || perfil.ativo === false) {
+      const destino = request.nextUrl.clone()
+      destino.pathname = '/admin/login'
+      destino.search = '?motivo=sem_acesso'
+      return NextResponse.redirect(destino)
+    }
+
+    if (perfil.papel !== 'dono' && !LIBERADO_PARA_ATENDENTE.some((r) => r.test(rota))) {
+      const destino = request.nextUrl.clone()
+      destino.pathname = '/admin'
+      destino.search = '?motivo=so_dono'
+      return NextResponse.redirect(destino)
+    }
   }
 
   return resposta

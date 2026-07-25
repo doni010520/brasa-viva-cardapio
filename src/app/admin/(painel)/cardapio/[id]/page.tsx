@@ -1,6 +1,8 @@
-import { notFound } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
 import { EditorProduto } from '@/components/admin/editor-produto'
 import { buscarCardapio, buscarProduto } from '@/lib/dados'
+
+import { usuarioAdminAtual } from '@/lib/supabase/server'
 
 export const dynamic = 'force-dynamic'
 
@@ -11,6 +13,11 @@ export default async function PaginaEditorProduto({
   params: Promise<{ id: string }>
   searchParams: Promise<{ categoria?: string }>
 }) {
+
+  // O proxy já barra o atendente, mas a página confere de novo: se um dia o
+  // matcher mudar, esta tela não vira porta aberta sem ninguém perceber.
+  const quemEstaVendo = await usuarioAdminAtual()
+  if (!quemEstaVendo?.ehDono) redirect('/admin?motivo=so_dono')
   const [{ id }, { categoria }] = await Promise.all([params, searchParams])
   const ehNovo = id === 'novo'
 

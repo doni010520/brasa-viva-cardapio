@@ -2,11 +2,27 @@
 
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
-import { criarClienteAdmin, exigirAdmin } from '@/lib/supabase/server'
+import { criarClienteAdmin, exigirAdmin, exigirDono } from '@/lib/supabase/server'
 
 type Resposta<T = undefined> = { ok: true; dados?: T } | { ok: false; erro: string }
 
-async function garantirAdmin(): Promise<string | null> {
+/**
+ * Mexer no cardápio é coisa de dono: preço, foto, o que existe e o que não
+ * existe. O atendente só pode marcar item como esgotado (ver mais abaixo).
+ */
+async function garantirDono(): Promise<string | null> {
+  try {
+    await exigirDono()
+    return null
+  } catch (erro) {
+    return erro instanceof Error && erro.message.includes('Só o dono')
+      ? 'Só o dono pode mexer no cardápio.'
+      : 'Sessão expirada. Entre de novo no painel.'
+  }
+}
+
+/** Para o que qualquer pessoa da equipe pode fazer. */
+async function garantirEquipe(): Promise<string | null> {
   try {
     await exigirAdmin()
     return null
@@ -31,7 +47,7 @@ const esquemaCategoria = z.object({
 })
 
 export async function salvarCategoriaAction(entrada: unknown): Promise<Resposta> {
-  const bloqueio = await garantirAdmin()
+  const bloqueio = await garantirDono()
   if (bloqueio) return { ok: false, erro: bloqueio }
 
   const analise = esquemaCategoria.safeParse(entrada)
@@ -53,7 +69,7 @@ export async function salvarCategoriaAction(entrada: unknown): Promise<Resposta>
 }
 
 export async function excluirCategoriaAction(id: string): Promise<Resposta> {
-  const bloqueio = await garantirAdmin()
+  const bloqueio = await garantirDono()
   if (bloqueio) return { ok: false, erro: bloqueio }
 
   const supabase = criarClienteAdmin()
@@ -92,7 +108,7 @@ const esquemaProduto = z.object({
 })
 
 export async function salvarProdutoAction(entrada: unknown): Promise<Resposta<{ id: string }>> {
-  const bloqueio = await garantirAdmin()
+  const bloqueio = await garantirDono()
   if (bloqueio) return { ok: false, erro: bloqueio }
 
   const analise = esquemaProduto.safeParse(entrada)
@@ -124,12 +140,16 @@ export async function salvarProdutoAction(entrada: unknown): Promise<Resposta<{ 
   return { ok: true, dados: { id: data.id as string } }
 }
 
-/** O botão de "esgotou" — o mais usado no dia a dia. */
+/**
+ * O botão de "esgotou" — o mais usado no dia a dia, e a ÚNICA coisa do
+ * cardápio que o atendente pode fazer. Acabou a picanha às 13h: quem está
+ * no balcão tira do ar na hora, sem depender do dono.
+ */
 export async function alternarDisponibilidadeAction(
   id: string,
   disponivel: boolean
 ): Promise<Resposta> {
-  const bloqueio = await garantirAdmin()
+  const bloqueio = await garantirEquipe()
   if (bloqueio) return { ok: false, erro: bloqueio }
 
   const supabase = criarClienteAdmin()
@@ -141,7 +161,7 @@ export async function alternarDisponibilidadeAction(
 }
 
 export async function excluirProdutoAction(id: string): Promise<Resposta> {
-  const bloqueio = await garantirAdmin()
+  const bloqueio = await garantirDono()
   if (bloqueio) return { ok: false, erro: bloqueio }
 
   const supabase = criarClienteAdmin()
@@ -164,7 +184,7 @@ const esquemaGrupo = z.object({
 })
 
 export async function salvarGrupoAction(entrada: unknown): Promise<Resposta> {
-  const bloqueio = await garantirAdmin()
+  const bloqueio = await garantirDono()
   if (bloqueio) return { ok: false, erro: bloqueio }
 
   const analise = esquemaGrupo.safeParse(entrada)
@@ -190,7 +210,7 @@ export async function salvarGrupoAction(entrada: unknown): Promise<Resposta> {
 }
 
 export async function excluirGrupoAction(id: string, produtoId: string): Promise<Resposta> {
-  const bloqueio = await garantirAdmin()
+  const bloqueio = await garantirDono()
   if (bloqueio) return { ok: false, erro: bloqueio }
 
   const supabase = criarClienteAdmin()
@@ -215,7 +235,7 @@ export async function salvarOpcaoAction(
   entrada: unknown,
   produtoId: string
 ): Promise<Resposta> {
-  const bloqueio = await garantirAdmin()
+  const bloqueio = await garantirDono()
   if (bloqueio) return { ok: false, erro: bloqueio }
 
   const analise = esquemaOpcao.safeParse(entrada)
@@ -237,7 +257,7 @@ export async function salvarOpcaoAction(
 }
 
 export async function excluirOpcaoAction(id: string, produtoId: string): Promise<Resposta> {
-  const bloqueio = await garantirAdmin()
+  const bloqueio = await garantirDono()
   if (bloqueio) return { ok: false, erro: bloqueio }
 
   const supabase = criarClienteAdmin()
@@ -256,7 +276,7 @@ const TAMANHO_MAXIMO = 5 * 1024 * 1024
 
 /** Sobe a foto do prato para o Storage e devolve a URL pública. */
 export async function enviarImagemAction(formulario: FormData): Promise<Resposta<{ url: string }>> {
-  const bloqueio = await garantirAdmin()
+  const bloqueio = await garantirDono()
   if (bloqueio) return { ok: false, erro: bloqueio }
 
   const arquivo = formulario.get('arquivo')

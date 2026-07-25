@@ -49,8 +49,18 @@ export function criarClienteAdmin() {
   )
 }
 
+export type Papel = 'dono' | 'atendente'
+
+export type UsuarioPainel = {
+  id: string
+  email: string
+  nome: string
+  papel: Papel
+  ehDono: boolean
+}
+
 /** Retorna o usuário logado do painel, ou null. */
-export async function usuarioAdminAtual() {
+export async function usuarioAdminAtual(): Promise<UsuarioPainel | null> {
   const supabase = await criarClienteServidor()
   const {
     data: { user },
@@ -60,16 +70,41 @@ export async function usuarioAdminAtual() {
   const admin = criarClienteAdmin()
   const { data } = await admin
     .from('admins')
-    .select('user_id, nome, email')
+    .select('user_id, nome, email, papel, ativo')
     .eq('user_id', user.id)
     .maybeSingle()
 
-  return data ? { id: user.id, email: user.email ?? '', nome: data.nome ?? user.email ?? '' } : null
+  // desligado pelo dono continua com sessão válida no Auth, mas sem acesso
+  if (!data || data.ativo === false) return null
+
+  const papel = (data.papel ?? 'atendente') as Papel
+  return {
+    id: user.id,
+    email: user.email ?? '',
+    nome: data.nome ?? user.email ?? '',
+    papel,
+    ehDono: papel === 'dono',
+  }
 }
 
-/** Usa em toda server action do admin: derruba a chamada se não for admin. */
+/** Usa em toda server action do painel: derruba a chamada se não for da equipe. */
 export async function exigirAdmin() {
   const admin = await usuarioAdminAtual()
   if (!admin) throw new Error('Acesso negado. Faça login no painel.')
+  return admin
+}
+
+/**
+ * Para o que mexe em dinheiro, cardápio, cliente ou equipe.
+ *
+ * O menu já esconde essas telas do atendente, mas esconder botão não é
+ * segurança: a ação continua acessível por requisição direta. Esta é a
+ * tranca que vale.
+ */
+export async function exigirDono() {
+  const admin = await exigirAdmin()
+  if (!admin.ehDono) {
+    throw new Error('Só o dono pode fazer isso.')
+  }
   return admin
 }

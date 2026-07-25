@@ -95,7 +95,11 @@ try {
   await pagina.goto(`${BASE}/checkout`, { waitUntil: 'networkidle' })
   await pagina.waitForTimeout(800)
 
-  conferir(await pagina.getByText('Mesa 7').isVisible(), 'checkout mostra "Mesa 7"')
+  // 'Mesa 7' aparece na faixa do topo E no checkout; olha o corpo da pagina
+  conferir(
+    (await pagina.locator('main').getByText('Mesa 7').count()) > 0,
+    'checkout mostra "Mesa 7"'
+  )
   conferir(
     await pagina.getByLabel(/Seu aniversário/).isVisible(),
     'checkout pede o aniversário (opcional)'

@@ -4,8 +4,10 @@ import { ChaveDaLoja } from '@/components/admin/chave-da-loja'
 import { buscarConfiguracoes, buscarHorarios, buscarPedidosDoPainel } from '@/lib/dados'
 import { estadoDaLoja, inicioDoDiaAtras } from '@/lib/tempo'
 import { moeda } from '@/lib/format'
-import { criarClienteAdmin } from '@/lib/supabase/server'
+import { criarClienteAdmin, usuarioAdminAtual } from '@/lib/supabase/server'
 import { Cartao } from '@/components/ui'
+
+import { redirect } from 'next/navigation'
 
 export const dynamic = 'force-dynamic'
 
@@ -28,6 +30,9 @@ async function resumoDeHoje() {
 }
 
 export default async function PaginaPedidos() {
+  const admin = await usuarioAdminAtual()
+  if (!admin) redirect('/admin/login')
+
   const [pedidos, config, horarios, hoje] = await Promise.all([
     buscarPedidosDoPainel([
       'aguardando_pagamento',
@@ -62,9 +67,16 @@ export default async function PaginaPedidos() {
         />
       </div>
 
-      <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div
+        className={`mb-5 grid gap-3 ${admin.ehDono ? 'grid-cols-2 sm:grid-cols-4' : 'grid-cols-3'}`}
+      >
         <Indicador rotulo="Pedidos hoje" valor={String(hoje.quantidade)} />
-        <Indicador rotulo="Faturamento hoje" valor={moeda(hoje.faturamento)} />
+
+        {/* dinheiro é assunto do dono; o atendente opera sem ver o caixa */}
+        {admin.ehDono && (
+          <Indicador rotulo="Faturamento hoje" valor={moeda(hoje.faturamento)} />
+        )}
+
         <Indicador
           rotulo="Na cozinha"
           valor={String(pedidos.filter((p) => p.status === 'em_preparo').length)}

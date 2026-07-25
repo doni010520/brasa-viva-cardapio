@@ -1,6 +1,5 @@
 import { Cardapio } from '@/components/loja/cardapio'
 import { EscolhaModo } from '@/components/loja/escolha-modo'
-import { TrocarModo } from '@/components/loja/trocar-modo'
 import { buscarCardapio, buscarConfiguracoes, buscarHorarios } from '@/lib/dados'
 import { modoAtual } from '@/lib/modo'
 import { estadoDaLoja } from '@/lib/tempo'
@@ -46,9 +45,7 @@ export default async function PaginaCardapio() {
   return (
     <>
       <section className="pt-5 pb-2">
-        {config.aceita_consumo_local && podeViagem && <TrocarModo modo={modoEfetivo} />}
-
-        <h1 className="mt-3 text-2xl font-black tracking-tight text-tinta-900">{config.nome}</h1>
+        <h1 className="text-2xl font-black tracking-tight text-tinta-900">{config.nome}</h1>
         {config.descricao && <p className="mt-1 text-tinta-500">{config.descricao}</p>}
 
         {modoEfetivo === 'local' && (

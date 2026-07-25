@@ -13,7 +13,13 @@ import { Botao, Campo, Cartao, Rotulo, Selo, Vazio } from '@/components/ui'
 import { moeda } from '@/lib/format'
 import type { CategoriaComProdutos, Produto } from '@/lib/types'
 
-export function GestaoCardapio({ categorias }: { categorias: CategoriaComProdutos[] }) {
+export function GestaoCardapio({
+  categorias,
+  ehDono,
+}: {
+  categorias: CategoriaComProdutos[]
+  ehDono: boolean
+}) {
   const [editandoCategoria, setEditandoCategoria] = useState<
     CategoriaComProdutos | 'nova' | null
   >(null)
@@ -21,18 +27,20 @@ export function GestaoCardapio({ categorias }: { categorias: CategoriaComProduto
 
   return (
     <>
-      <div className="mb-4 flex flex-wrap gap-2">
-        <Botao onClick={() => setEditandoCategoria('nova')} variante="fantasma">
-          <Plus className="h-4 w-4" />
-          Nova categoria
-        </Botao>
-        <Link href="/admin/cardapio/novo">
-          <Botao>
+      {ehDono && (
+        <div className="mb-4 flex flex-wrap gap-2">
+          <Botao onClick={() => setEditandoCategoria('nova')} variante="fantasma">
             <Plus className="h-4 w-4" />
-            Novo produto
+            Nova categoria
           </Botao>
-        </Link>
-      </div>
+          <Link href="/admin/cardapio/novo">
+            <Botao>
+              <Plus className="h-4 w-4" />
+              Novo produto
+            </Botao>
+          </Link>
+        </div>
+      )}
 
       {erro && (
         <p className="mb-4 rounded-xl bg-marca-50 px-4 py-3 text-sm font-medium text-marca-700">
@@ -53,6 +61,7 @@ export function GestaoCardapio({ categorias }: { categorias: CategoriaComProduto
             <BlocoCategoria
               key={categoria.id}
               categoria={categoria}
+              ehDono={ehDono}
               onEditar={() => setEditandoCategoria(categoria)}
               onErro={setErro}
             />
@@ -72,10 +81,12 @@ export function GestaoCardapio({ categorias }: { categorias: CategoriaComProduto
 
 function BlocoCategoria({
   categoria,
+  ehDono,
   onEditar,
   onErro,
 }: {
   categoria: CategoriaComProdutos
+  ehDono: boolean
   onEditar: () => void
   onErro: (mensagem: string) => void
 }) {
@@ -102,39 +113,53 @@ function BlocoCategoria({
           {categoria.produtos.length === 1 ? 'produto' : 'produtos'}
         </span>
 
-        <div className="ml-auto flex gap-1">
-          <button
-            onClick={onEditar}
-            className="toque rounded-lg text-tinta-500 transition hover:bg-tinta-100"
-            aria-label={`Editar categoria ${categoria.nome}`}
-          >
-            <Pencil className="h-4 w-4" />
-          </button>
-          <button
-            onClick={excluir}
-            disabled={apagando}
-            className="toque rounded-lg text-tinta-500 transition hover:bg-marca-50 hover:text-marca-600"
-            aria-label={`Apagar categoria ${categoria.nome}`}
-          >
-            {apagando ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Trash2 className="h-4 w-4" />
-            )}
-          </button>
-        </div>
+        {/* mexer na categoria é coisa de dono; o atendente só vê a lista */}
+        {ehDono && (
+          <div className="ml-auto flex gap-1">
+            <button
+              onClick={onEditar}
+              className="toque rounded-lg text-tinta-500 transition hover:bg-tinta-100"
+              aria-label={`Editar categoria ${categoria.nome}`}
+            >
+              <Pencil className="h-4 w-4" />
+            </button>
+            <button
+              onClick={excluir}
+              disabled={apagando}
+              className="toque rounded-lg text-tinta-500 transition hover:bg-marca-50 hover:text-marca-600"
+              aria-label={`Apagar categoria ${categoria.nome}`}
+            >
+              {apagando ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Trash2 className="h-4 w-4" />
+              )}
+            </button>
+          </div>
+        )}
       </div>
 
       {categoria.produtos.length === 0 ? (
+        ehDono ? (
         <Link href={`/admin/cardapio/novo?categoria=${categoria.id}`}>
           <div className="rounded-xl border border-dashed border-tinta-300 px-4 py-6 text-center text-sm text-tinta-400 transition hover:border-tinta-400 hover:text-tinta-600">
             + Adicionar o primeiro produto desta categoria
           </div>
         </Link>
+        ) : (
+          <p className="rounded-xl border border-dashed border-tinta-300 px-4 py-6 text-center text-sm text-tinta-400">
+            Nenhum produto nesta categoria.
+          </p>
+        )
       ) : (
         <div className="space-y-2">
           {categoria.produtos.map((produto) => (
-            <LinhaProduto key={produto.id} produto={produto} onErro={onErro} />
+            <LinhaProduto
+              key={produto.id}
+              produto={produto}
+              ehDono={ehDono}
+              onErro={onErro}
+            />
           ))}
         </div>
       )}
@@ -144,9 +169,11 @@ function BlocoCategoria({
 
 function LinhaProduto({
   produto,
+  ehDono,
   onErro,
 }: {
   produto: Produto
+  ehDono: boolean
   onErro: (mensagem: string) => void
 }) {
   const router = useRouter()
@@ -235,13 +262,15 @@ function LinhaProduto({
         </span>
       </button>
 
-      <Link
-        href={`/admin/cardapio/${produto.id}`}
-        className="toque shrink-0 rounded-lg text-tinta-500 transition hover:bg-tinta-100"
-        aria-label={`Editar ${produto.nome}`}
-      >
-        <Pencil className="h-4 w-4" />
-      </Link>
+      {ehDono && (
+        <Link
+          href={`/admin/cardapio/${produto.id}`}
+          className="toque shrink-0 rounded-lg text-tinta-500 transition hover:bg-tinta-100"
+          aria-label={`Editar ${produto.nome}`}
+        >
+          <Pencil className="h-4 w-4" />
+        </Link>
+      )}
     </Cartao>
   )
 }

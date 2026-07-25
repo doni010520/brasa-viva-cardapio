@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
-import { criarClienteAdmin, exigirAdmin } from '@/lib/supabase/server'
+import { criarClienteAdmin, exigirDono } from '@/lib/supabase/server'
 
 type Resposta = { ok: true } | { ok: false; erro: string }
 
@@ -46,9 +46,9 @@ const esquemaConfig = z.object({
 
 export async function salvarConfiguracoesAction(entrada: unknown): Promise<Resposta> {
   try {
-    await exigirAdmin()
+    await exigirDono()
   } catch {
-    return { ok: false, erro: 'Sessão expirada. Entre de novo.' }
+    return { ok: false, erro: 'Só o dono pode fazer isso. Se a sessão expirou, entre de novo.' }
   }
 
   const analise = esquemaConfig.safeParse(entrada)
@@ -113,9 +113,9 @@ const esquemaBairro = z.object({
 
 export async function salvarBairroAction(entrada: unknown): Promise<Resposta> {
   try {
-    await exigirAdmin()
+    await exigirDono()
   } catch {
-    return { ok: false, erro: 'Sessão expirada. Entre de novo.' }
+    return { ok: false, erro: 'Só o dono pode fazer isso. Se a sessão expirou, entre de novo.' }
   }
 
   const analise = esquemaBairro.safeParse(entrada)
@@ -141,9 +141,9 @@ export async function salvarBairroAction(entrada: unknown): Promise<Resposta> {
 
 export async function excluirBairroAction(id: string): Promise<Resposta> {
   try {
-    await exigirAdmin()
+    await exigirDono()
   } catch {
-    return { ok: false, erro: 'Sessão expirada. Entre de novo.' }
+    return { ok: false, erro: 'Só o dono pode fazer isso. Se a sessão expirou, entre de novo.' }
   }
 
   const supabase = criarClienteAdmin()
@@ -166,9 +166,9 @@ const esquemaHorarios = z.array(
 
 export async function salvarHorariosAction(entrada: unknown): Promise<Resposta> {
   try {
-    await exigirAdmin()
+    await exigirDono()
   } catch {
-    return { ok: false, erro: 'Sessão expirada. Entre de novo.' }
+    return { ok: false, erro: 'Só o dono pode fazer isso. Se a sessão expirou, entre de novo.' }
   }
 
   const analise = esquemaHorarios.safeParse(entrada)

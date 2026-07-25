@@ -21,7 +21,16 @@ export default async function LayoutPainel({ children }: { children: React.React
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">
           <div className="min-w-0">
             <p className="truncate text-sm font-bold text-white">{config.nome}</p>
-            <p className="truncate text-xs text-tinta-400">{admin.email}</p>
+            <p className="flex items-center gap-1.5 truncate text-xs text-tinta-400">
+              {admin.email}
+              <span
+                className={`rounded px-1.5 py-0.5 text-[11px] font-bold uppercase ${
+                  admin.ehDono ? 'bg-marca text-white' : 'bg-white/15 text-tinta-200'
+                }`}
+              >
+                {admin.ehDono ? 'Dono' : 'Atendente'}
+              </span>
+            </p>
           </div>
 
           <div className="flex shrink-0 items-center gap-1">
@@ -46,7 +55,7 @@ export default async function LayoutPainel({ children }: { children: React.React
           </div>
         </div>
 
-        <NavegacaoAdmin />
+        <NavegacaoAdmin ehDono={admin.ehDono} />
       </header>
 
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6">{children}</main>
