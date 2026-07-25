@@ -25,6 +25,7 @@ const CHAVE_CLIENTE = 'cardapio:cliente:v1'
 type DadosSalvos = {
   nome?: string
   telefone?: string
+  email?: string
   enderecoRua?: string
   enderecoNumero?: string
   enderecoComplemento?: string
@@ -60,6 +61,7 @@ export function FormularioCheckout({
 
   const [nome, setNome] = useState('')
   const [telefone, setTelefone] = useState('')
+  const [email, setEmail] = useState('')
   const [observacoes, setObservacoes] = useState('')
   const [retirada, setRetirada] = useState(horariosRetirada[0]?.valor ?? '')
   const [formaPagamento, setFormaPagamento] = useState<FormaPagamento>(
@@ -91,6 +93,7 @@ export function FormularioCheckout({
       const dados = JSON.parse(salvo) as DadosSalvos
       if (dados.nome) setNome(dados.nome)
       if (dados.telefone) setTelefone(dados.telefone)
+      if (dados.email) setEmail(dados.email)
       if (dados.enderecoRua) setEnderecoRua(dados.enderecoRua)
       if (dados.enderecoNumero) setEnderecoNumero(dados.enderecoNumero)
       if (dados.enderecoComplemento) setEnderecoComplemento(dados.enderecoComplemento)
@@ -171,6 +174,7 @@ export function FormularioCheckout({
       const resposta = await criarPedidoAction({
         nome: nome.trim(),
         telefone: telefone.trim(),
+        email: email.trim() || undefined,
         observacoes: observacoes.trim() || undefined,
         formaPagamento,
         tipoEntrega,
@@ -192,6 +196,7 @@ export function FormularioCheckout({
       const paraSalvar: DadosSalvos = {
         nome: nome.trim(),
         telefone,
+        email: email.trim(),
         enderecoRua: enderecoRua.trim(),
         enderecoNumero: enderecoNumero.trim(),
         enderecoComplemento: enderecoComplemento.trim(),
@@ -294,6 +299,23 @@ export function FormularioCheckout({
               A gente avisa por aqui quando o pedido estiver pronto.
             </p>
           </div>
+
+          {formaPagamento === 'online' && (
+            <div>
+              <Rotulo htmlFor="email">E-mail (opcional)</Rotulo>
+              <Campo
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="voce@email.com"
+                autoComplete="email"
+              />
+              <p className="mt-1 text-xs text-tinta-400">
+                Adianta o preenchimento na hora de pagar e serve de comprovante.
+              </p>
+            </div>
+          )}
 
           {!ehEntrega && horariosRetirada.length > 0 && (
             <div>

@@ -22,6 +22,9 @@ const esquemaConfig = z.object({
   aceita_pagamento_online: z.boolean(),
   aceita_pagamento_local: z.boolean(),
   chave_pix: z.string().trim().max(120).optional(),
+  aceita_pix: z.boolean(),
+  aceita_cartao: z.boolean(),
+  pix_expira_min: z.coerce.number().int().min(5).max(1440),
   aceita_retirada: z.boolean(),
   aceita_entrega: z.boolean(),
   tempo_entrega_min: z.coerce.number().int().min(0).max(480),
@@ -46,6 +49,12 @@ export async function salvarConfiguracoesAction(entrada: unknown): Promise<Respo
   }
   if (!dados.aceita_retirada && !dados.aceita_entrega) {
     return { ok: false, erro: 'Deixe pelo menos retirada ou entrega ligada.' }
+  }
+  if (dados.aceita_pagamento_online && !dados.aceita_pix && !dados.aceita_cartao) {
+    return {
+      ok: false,
+      erro: 'Com pagamento online ligado, deixe ao menos Pix ou cartão marcado.',
+    }
   }
 
   const supabase = criarClienteAdmin()

@@ -93,6 +93,9 @@ function BlocoLoja({
     aceita_pagamento_online: config.aceita_pagamento_online,
     aceita_pagamento_local: config.aceita_pagamento_local,
     chave_pix: config.chave_pix ?? '',
+    aceita_pix: config.aceita_pix,
+    aceita_cartao: config.aceita_cartao,
+    pix_expira_min: String(config.pix_expira_min),
     aceita_retirada: config.aceita_retirada,
     aceita_entrega: config.aceita_entrega,
     tempo_entrega_min: String(config.tempo_entrega_min),
@@ -329,9 +332,61 @@ function BlocoLoja({
             <span className="block text-sm font-medium text-tinta-900">
               Aceitar pagamento online
             </span>
-            <span className="block text-xs text-tinta-500">Pix e cartão pelo Mercado Pago.</span>
+            <span className="block text-xs text-tinta-500">
+              O cliente paga dentro do site, sem ser jogado para fora.
+            </span>
           </span>
         </label>
+
+        {campos.aceita_pagamento_online && (
+          <div className="ml-6 space-y-2.5 border-l-2 border-tinta-200 pl-4">
+            <label className="flex items-start gap-2.5">
+              <input
+                type="checkbox"
+                checked={campos.aceita_pix}
+                onChange={(e) => mudar('aceita_pix', e.target.checked)}
+                className="mt-0.5 h-4 w-4 accent-black"
+              />
+              <span>
+                <span className="block text-sm font-medium text-tinta-900">Pix</span>
+                <span className="block text-xs text-tinta-500">
+                  QR Code na própria tela. Cai na hora e é o mais barato para você.
+                </span>
+              </span>
+            </label>
+
+            <label className="flex items-start gap-2.5">
+              <input
+                type="checkbox"
+                checked={campos.aceita_cartao}
+                onChange={(e) => mudar('aceita_cartao', e.target.checked)}
+                className="mt-0.5 h-4 w-4 accent-black"
+              />
+              <span>
+                <span className="block text-sm font-medium text-tinta-900">
+                  Cartão de crédito
+                </span>
+                <span className="block text-xs text-tinta-500">
+                  Aprovação na hora. O Mercado Pago cobra a taxa dele.
+                </span>
+              </span>
+            </label>
+
+            {campos.aceita_pix && (
+              <div className="max-w-[220px] pt-1">
+                <Rotulo htmlFor="pix-expira">O Pix vence em (minutos)</Rotulo>
+                <Campo
+                  id="pix-expira"
+                  type="number"
+                  min={5}
+                  max={1440}
+                  value={campos.pix_expira_min}
+                  onChange={(e) => mudar('pix_expira_min', e.target.value)}
+                />
+              </div>
+            )}
+          </div>
+        )}
 
         <label className="flex items-start gap-2.5">
           <input

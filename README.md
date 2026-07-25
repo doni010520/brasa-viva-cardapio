@@ -17,6 +17,7 @@ O dono controla cardápio, preços, horários, cupons e pedidos por um painel pr
    - `supabase/migrations/0001_schema.sql` — tabelas, índices, RLS e o bucket de imagens
    - `supabase/migrations/0002_seed_exemplo.sql` — cardápio inicial da Brasa Viva (opcional)
    - `supabase/migrations/0003_entrega.sql` — entrega por bairro (taxa, endereço, status "em rota")
+   - `supabase/migrations/0004_pagamento_api.sql` — pagamento por API (Pix e cartão no site)
 3. Em **Project Settings → API**, copie:
    - `Project URL` → `NEXT_PUBLIC_SUPABASE_URL`
    - `anon public` → `NEXT_PUBLIC_SUPABASE_ANON_KEY`
@@ -57,14 +58,30 @@ npm run dev
 
 Sem isso o sistema funciona normalmente — só não aparece a opção de pagar online.
 
+O pagamento é **Checkout Transparente**: o cliente paga dentro do site, sem ser
+jogado para fora. Pix aparece como QR Code na própria tela; cartão de crédito é
+um formulário no app. (Boleto ficou de fora de propósito: compensa em 1 a 3 dias
+úteis, e ninguém almoça hoje pagando um boleto que cai na quinta.)
+
 1. Em [mercadopago.com.br/developers](https://www.mercadopago.com.br/developers) → **Suas integrações**,
-   crie uma aplicação e copie o **Access Token de produção** → `MP_ACCESS_TOKEN`.
+   crie uma aplicação e copie, em *Credenciais de produção*:
+   - **Access Token** → `MP_ACCESS_TOKEN` *(secreto, só no servidor)*
+   - **Public Key** → `NEXT_PUBLIC_MP_PUBLIC_KEY` *(vai para o navegador, é pública mesmo)*
 2. Em **Webhooks**, cadastre a URL `https://SEU-DOMINIO/api/webhooks/mercadopago`
    e marque o evento **Pagamentos**.
 3. Copie a **assinatura secreta** → `MP_WEBHOOK_SECRET`.
 
+Para testar antes de ir ao ar, use as **credenciais de teste** (mesma tela) e os
+[cartões de teste](https://www.mercadopago.com.br/developers/pt/docs/checkout-api/additional-content/your-integrations/test/cards)
+do Mercado Pago.
+
+> **Dado de cartão nunca passa pelo nosso servidor.** O formulário tokeniza no
+> navegador e só o token chega aqui — é o que nos mantém fora do escopo pesado de PCI.
+
 > O webhook confere a assinatura, consulta o pagamento direto na API do Mercado Pago
 > e compara o valor pago com o total do pedido antes de liberar para a cozinha.
+> Como webhook atrasa (e em ambiente local nem chega), a tela do Pix também
+> pergunta o status a cada 5 segundos e tem um botão "já paguei, conferir agora".
 
 ### 6. Ligar os avisos no WhatsApp (opcional)
 
@@ -104,7 +121,11 @@ disponibilidade e as regras de mínimo/máximo de cada grupo de opções. Sem is
 pessoa fecharia um pedido de R$ 0,01 pelo DevTools.
 
 **Pagamento online não pula a fila.** Pedido online nasce como `aguardando_pagamento` e só vira
-`recebido` quando o webhook confirma. Pedido para pagar na hora já entra direto na cozinha.
+`recebido` quando o pagamento é confirmado. Pedido para pagar na hora já entra direto na cozinha.
+
+**O valor cobrado sai do banco, não do navegador.** Em `src/app/api/pagamentos/route.ts` o
+`transaction_amount` é lido do pedido gravado. O que o navegador manda é apenas *o que* foi
+escolhido e o token do cartão — nunca quanto custa.
 
 **Status andam só para frente.** A máquina de transições em `src/app/admin/(painel)/acoes.ts`
 não deixa um pedido "pronto" voltar para "recebido" por um toque errado no meio do corre.

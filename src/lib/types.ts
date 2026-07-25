@@ -59,6 +59,10 @@ export type Configuracoes = {
   aceita_pagamento_online: boolean
   aceita_pagamento_local: boolean
   chave_pix: string | null
+  // meios online, cada um ligado/desligado pelo dono
+  aceita_pix: boolean
+  aceita_cartao: boolean
+  pix_expira_min: number
   // entrega
   aceita_retirada: boolean
   aceita_entrega: boolean
@@ -153,6 +157,13 @@ export type Pedido = {
   endereco_referencia: string | null
   mp_preference_id: string | null
   mp_payment_id: string | null
+  // pagamento por API
+  cliente_email: string | null
+  cliente_cpf: string | null
+  metodo_pagamento: string | null
+  pix_copia_cola: string | null
+  pix_expira_em: string | null
+  pagamento_detalhe: string | null
   criado_em: string
   atualizado_em: string
   itens?: PedidoItem[]

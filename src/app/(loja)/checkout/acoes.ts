@@ -4,7 +4,7 @@ import { z } from 'zod'
 import { buscarConfiguracoes, buscarHorarios } from '@/lib/dados'
 import { consumirCupom, validarCupom } from '@/lib/cupons'
 import { conferirItens, type ItemEnviado } from '@/lib/montar-pedido'
-import { criarPreferencia, mercadoPagoConfigurado, urlBase } from '@/lib/mercadopago'
+import { mercadoPagoConfigurado, urlBase } from '@/lib/mercadopago'
 import { criarClienteAdmin } from '@/lib/supabase/server'
 import { estadoDaLoja } from '@/lib/tempo'
 import { apenasDigitos } from '@/lib/format'
@@ -22,6 +22,8 @@ const esquemaPedido = z.object({
   nome: z.string().trim().min(2, 'Diga seu nome.').max(80),
   telefone: z.string().trim().min(10, 'Telefone incompleto.').max(20),
   observacoes: z.string().trim().max(300).optional(),
+  email: z.string().trim().email('E-mail inválido.').max(120).optional().or(z.literal('')),
+  cpf: z.string().trim().max(20).optional(),
   formaPagamento: z.enum(['online', 'local']),
   tipoEntrega: z.enum(['retirada', 'entrega']),
   retiradaPrevista: z.string().datetime().nullable().optional(),
@@ -147,6 +149,8 @@ export async function criarPedidoAction(entrada: unknown): Promise<RespostaCheck
     .insert({
       cliente_nome: dados.nome,
       cliente_telefone: dados.telefone,
+      cliente_email: dados.email || null,
+      cliente_cpf: dados.cpf ? dados.cpf.replace(/\D/g, '') : null,
       observacoes: dados.observacoes || null,
       subtotal_centavos: subtotalCentavos,
       desconto_centavos: descontoCentavos,
@@ -200,26 +204,13 @@ export async function criarPedidoAction(entrada: unknown): Promise<RespostaCheck
     return { ok: true, pedidoId: pedido.id, destino: `/pedido/${pedido.id}`, externo: false }
   }
 
-  try {
-    const { preferenceId, urlPagamento } = await criarPreferencia({
-      id: pedido.id,
-      numero: pedido.numero,
-      totalCentavos,
-      clienteNome: dados.nome,
-      clienteTelefone: dados.telefone,
-      descricaoItens: linhas.map((l) => `${l.quantidade}x ${l.produto_nome}`).join(', '),
-      nomeLoja: config.nome,
-    })
-
-    await supabase.from('pedidos').update({ mp_preference_id: preferenceId }).eq('id', pedido.id)
-    return { ok: true, pedidoId: pedido.id, destino: urlPagamento, externo: true }
-  } catch (erro) {
-    await supabase.from('pedidos').delete().eq('id', pedido.id)
-    console.error('[checkout] falha ao criar preferência do Mercado Pago', erro)
-    return {
-      ok: false,
-      erro: 'Não consegui abrir o pagamento. Tente de novo ou escolha pagar na entrega/retirada.',
-    }
+  // Pagamento online: o pedido já existe como "aguardando_pagamento" e o cliente
+  // segue para a tela de pagamento DENTRO do app (Pix, cartão ou boleto).
+  return {
+    ok: true,
+    pedidoId: pedido.id,
+    destino: `/pedido/${pedido.id}/pagamento`,
+    externo: false,
   }
 }
 

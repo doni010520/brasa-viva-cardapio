@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
+import QRCode from 'qrcode'
 import {
   Bike,
   Check,
@@ -12,6 +13,7 @@ import {
   XCircle,
 } from 'lucide-react'
 import { AtualizacaoAutomatica } from '@/components/loja/atualizacao-automatica'
+import { PainelPix } from '@/components/loja/painel-pix'
 import { Botao, Cartao, Selo } from '@/components/ui'
 import { buscarConfiguracoes, buscarPedido } from '@/lib/dados'
 import { moeda } from '@/lib/format'
@@ -54,9 +56,15 @@ export default async function PaginaPedido({ params }: { params: Promise<{ id: s
   const etapas = etapasDoPedido(pedido.tipo_entrega)
   const etapaAtual = etapas.findIndex((e) => e.chave === pedido.status)
 
-  const linkPagamento = pedido.mp_preference_id
-    ? `https://www.mercadopago.com.br/checkout/v1/redirect?pref_id=${pedido.mp_preference_id}`
-    : null
+  // QR do Pix desenhado aqui no servidor, a partir do código copia-e-cola
+  const mostrarPix = aguardandoPagamento && Boolean(pedido.pix_copia_cola)
+  const qrSvg = mostrarPix
+    ? await QRCode.toString(pedido.pix_copia_cola!, {
+        type: 'svg',
+        margin: 0,
+        errorCorrectionLevel: 'M',
+      })
+    : ''
 
   return (
     <div className="py-6">
@@ -85,19 +93,26 @@ export default async function PaginaPedido({ params }: { params: Promise<{ id: s
             Se isso não era esperado, fale com a gente pelo telefone {config.telefone}.
           </p>
         </Cartao>
+      ) : mostrarPix ? (
+        <PainelPix
+          pedidoId={pedido.id}
+          copiaCola={pedido.pix_copia_cola!}
+          qrSvg={qrSvg}
+          expiraEm={pedido.pix_expira_em}
+          totalCentavos={pedido.total_centavos}
+        />
       ) : aguardandoPagamento ? (
         <Cartao className="mt-6 border-amber-200 bg-amber-50 p-4 text-center">
           <Clock className="mx-auto h-8 w-8 text-amber-600" />
-          <p className="mt-2 font-bold text-amber-800">Aguardando o pagamento</p>
+          <p className="mt-2 font-bold text-amber-800">Falta pagar</p>
           <p className="mt-1 text-sm text-amber-800/80">
-            Seu pedido só entra na fila da cozinha depois que o pagamento for aprovado. Se você
-            pagou no Pix agora, pode levar alguns segundos.
+            {pedido.pagamento_detalhe
+              ? 'A tentativa anterior não foi aprovada. Você pode tentar de novo.'
+              : 'Seu pedido só entra na fila da cozinha depois do pagamento.'}
           </p>
-          {linkPagamento && (
-            <a href={linkPagamento} className="mt-3 inline-block">
-              <Botao>Abrir o pagamento</Botao>
-            </a>
-          )}
+          <Link href={`/pedido/${pedido.id}/pagamento`} className="mt-3 inline-block">
+            <Botao>Pagar agora</Botao>
+          </Link>
         </Cartao>
       ) : (
         <Cartao className="mt-6 p-4">
