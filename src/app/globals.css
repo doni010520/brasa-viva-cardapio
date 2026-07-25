@@ -1,0 +1,86 @@
+@import "tailwindcss";
+
+/* Paleta tirada da marca do cliente: preto carvão, vermelho brasa e branco. */
+@theme {
+  --color-marca-50: #fff1f1;
+  --color-marca-100: #ffdedf;
+  --color-marca-500: #e30613;
+  --color-marca-600: #c00510;
+  --color-marca-700: #96040c;
+
+  --color-carvao-800: #171412;
+  --color-carvao-900: #0d0b0a;
+
+  --color-tinta-50: #faf9f8;
+  --color-tinta-100: #f5f3f1;
+  --color-tinta-200: #e7e3e0;
+  --color-tinta-300: #d6d1cc;
+  --color-tinta-400: #a8a19b;
+  --color-tinta-500: #78716c;
+  --color-tinta-600: #57534e;
+  --color-tinta-700: #44403c;
+  --color-tinta-900: #1c1917;
+
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+}
+
+:root {
+  /* sobrescrita em tempo de execução pela cor que o dono escolher no painel */
+  --marca: #e30613;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background: var(--color-tinta-50);
+  color: var(--color-tinta-900);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Cor da marca, aplicada onde o dono espera ver a identidade dele */
+.bg-marca {
+  background-color: var(--marca);
+}
+.text-marca {
+  color: var(--marca);
+}
+.border-marca {
+  border-color: var(--marca);
+}
+.ring-marca:focus-visible {
+  outline: 2px solid var(--marca);
+  outline-offset: 2px;
+}
+
+/* Esconde a barra de rolagem das abas de categoria, mantendo o gesto de arrastar */
+.sem-barra::-webkit-scrollbar {
+  display: none;
+}
+.sem-barra {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+@keyframes entrada-baixo {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.anima-entrada {
+  animation: entrada-baixo 0.18s ease-out;
+}
+
+@media print {
+  .sem-impressao {
+    display: none !important;
+  }
+}
