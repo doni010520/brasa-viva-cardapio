@@ -134,6 +134,15 @@ servidor reconfere na hora de fechar o pedido. Bairro fora da lista simplesmente
 "está aberto agora" e de horários de retirada passa por `src/lib/tempo.ts`, no fuso da loja.
 Horário que vira a madrugada (18:00 às 02:00) é tratado.
 
+**O cliente entra sem senha, mas não entra sem prova.** O histórico dele fica em
+`/meus-pedidos`. Sem login, a lista sai dos ids que o próprio navegador guardou na hora da
+compra — funciona sozinho, mas some se trocar de celular. Para ver tudo de qualquer aparelho,
+`/entrar` manda um código de 6 dígitos no WhatsApp: o número é o usuário, o código é a senha,
+e ninguém decora nada. O código existe por um motivo só — sem ele, quem soubesse o telefone de
+alguém veria o nome, o endereço de entrega e tudo que a pessoa já comprou. Código vale 10
+minutos, uma vez só, no máximo 5 tentativas; o banco guarda apenas o hash dele e o hash do
+token da sessão (`src/lib/cliente-sessao.ts`).
+
 **RLS fechado por padrão.** A chave anônima só lê o cardápio. Pedidos, cupons e configurações
 são escritos por server actions com `service_role`, e cada uma delas chama `exigirAdmin()` —
 o `proxy.ts` é a primeira tranca, não a única.

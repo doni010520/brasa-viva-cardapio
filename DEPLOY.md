@@ -100,6 +100,21 @@ UAZAPI_URL=
 UAZAPI_TOKEN=
 ```
 
+E, **só enquanto for demonstração**:
+
+```
+PERMITIR_CODIGO_NA_TELA=1
+```
+
+O cliente entra no histórico dele com um código de 6 dígitos que chega no
+WhatsApp. Sem a uazapi conectada esse código não tem como sair, então com esta
+chave ligada ele aparece na tela, com um aviso amarelo de "modo demonstração".
+
+⚠️ Ligada, ela derruba a proteção inteira: qualquer pessoa digita o número de
+outra e vê o nome, o endereço e o histórico de compras dela. **Apague esta
+linha no dia em que a loja abrir para o público.** Preenchendo
+`UAZAPI_URL`/`UAZAPI_TOKEN` a chave passa a ser ignorada sozinha.
+
 ⚠️ A **service_role** é a chave de administrador do banco: ela ignora todas as
 regras de segurança. Ela só pode existir aqui e no seu `.env.local`.
 
@@ -177,6 +192,9 @@ Antes de divulgar, em **Configurações**:
 - [ ] **Horário de funcionamento** de cada dia
 - [ ] **Bairros e taxas** de entrega
 - [ ] **Link do Instagram**, se for usar a campanha do bombom
+- [ ] Apagar a variável `PERMITIR_CODIGO_NA_TELA` do Environment (ou conectar a
+      uazapi) — enquanto ela existir, o código de acesso do cliente fica visível
+      na tela para quem digitar o número
 
 Em **Cardápio**, troque as fotos: as atuais são de banco de imagens, só para
 apresentação. As reais dos pratos ficam muito melhores — e evitam qualquer

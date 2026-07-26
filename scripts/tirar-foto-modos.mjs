@@ -2,7 +2,7 @@
 import { chromium } from 'playwright'
 const nav = await chromium.launch()
 
-for (const [modo, botao] of [['salao', /estou no salão/i], ['viagem', /é para viagem/i]]) {
+for (const [modo, botao] of [['salao', /estou no restaurante/i], ['viagem', /é para viagem/i]]) {
   const ctx = await nav.newContext({ viewport: { width: 420, height: 1000 }, deviceScaleFactor: 2 })
   const p = await ctx.newPage()
   await p.goto('http://localhost:3000', { waitUntil: 'networkidle' })

@@ -68,7 +68,7 @@ try {
     'site pergunta antes de mostrar o cardápio'
   )
   conferir(
-    await pagina.getByRole('button', { name: /estou no salão/i }).isVisible(),
+    await pagina.getByRole('button', { name: /estou no restaurante/i }).isVisible(),
     'botões respondem a pergunta com sim e não'
   )
   await pagina.screenshot({ path: `${TIROS}/00-escolha-modo.png` })
@@ -104,7 +104,7 @@ try {
   const contextoSalao = await navegador.newContext({ viewport: { width: 420, height: 900 } })
   const paraLocal = await contextoSalao.newPage()
   await paraLocal.goto(BASE, { waitUntil: 'networkidle' })
-  await paraLocal.getByRole('button', { name: /estou no salão/i }).click()
+  await paraLocal.getByRole('button', { name: /estou no restaurante/i }).click()
   await paraLocal.waitForTimeout(1500)
   conferir(
     (await paraLocal.getByRole('button', { name: /Buffet livre/ }).count()) > 0,

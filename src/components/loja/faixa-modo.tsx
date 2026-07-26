@@ -26,10 +26,11 @@ import type { ModoConsumo } from '@/lib/types'
  * 3. O botão nomeia o DESTINO, não a ação. "Trocar" descreve o mecanismo e
  *    deixa a pessoa adivinhar onde vai parar; "É para viagem" já diz o resultado.
  *
- * 4. A palavra é "salão", nunca "aqui" nem "no restaurante". "Você está no
- *    restaurante" era lido de casa como "você está no site do restaurante";
- *    "vou comer aqui" também serve para quem vai comer em casa. Ninguém tem
- *    salão em casa, então a palavra resolve sozinha.
+ * 4. O texto do cliente diz "no restaurante", nunca "salão" (palavra que
+ *    nem todo mundo usa) nem "aqui" (que de casa também é "aqui"). O que
+ *    desfaz a ambiguidade não é a palavra: é o formato pergunta/resposta.
+ *    A tela pergunta "Você está no restaurante agora?" e os botões
+ *    respondem "Sim" e "Não" — não sobra o que interpretar.
  */
 const APARENCIA = {
   local: {
@@ -37,8 +38,8 @@ const APARENCIA = {
     botao: 'bg-white/20 hover:bg-white/30 text-white',
     apoio: 'text-white/80',
     icone: UtensilsCrossed,
-    titulo: 'Pedido no salão',
-    detalhe: 'Servido na sua mesa, no restaurante',
+    titulo: 'Pedido no restaurante',
+    detalhe: 'Servido na sua mesa',
     // para onde o botão leva
     destino: 'É para viagem',
     iconeDestino: Bike,
@@ -50,7 +51,7 @@ const APARENCIA = {
     icone: Bike,
     titulo: 'Pedido para viagem',
     detalhe: 'Entrega em casa ou retirada no balcão',
-    destino: 'Estou no salão',
+    destino: 'Estou no restaurante',
     iconeDestino: UtensilsCrossed,
   },
 } as const
@@ -77,7 +78,7 @@ export function FaixaModo({ modo, mesa }: { modo: ModoConsumo; mesa: string | nu
     if (quantidadeTotal > 0) {
       const texto =
         novo === 'local'
-          ? 'Mudar para "pedido no salão" esvazia seu carrinho, porque o cardápio é outro. Continuar?'
+          ? 'Mudar para "pedido no restaurante" esvazia seu carrinho, porque o cardápio é outro. Continuar?'
           : 'Mudar para "pedido para viagem" esvazia seu carrinho, porque o cardápio é outro. Continuar?'
       if (!confirm(texto)) return
       limpar()

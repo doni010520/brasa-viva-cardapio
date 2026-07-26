@@ -13,6 +13,7 @@ import type { ModoConsumo } from '@/lib/types'
 export function EscolhaModo({
   nomeLoja,
   descricao,
+  fachadaUrl,
   aceitaLocal,
   aceitaRetirada,
   aceitaEntrega,
@@ -20,6 +21,7 @@ export function EscolhaModo({
 }: {
   nomeLoja: string
   descricao: string | null
+  fachadaUrl: string
   aceitaLocal: boolean
   aceitaRetirada: boolean
   aceitaEntrega: boolean
@@ -38,8 +40,19 @@ export function EscolhaModo({
   const podeViagem = aceitaRetirada || aceitaEntrega
 
   return (
-    <div className="py-10">
-      <div className="text-center">
+    <div className="pb-10">
+      {/* A foto da fachada é o que faz o cliente reconhecer a casa em que
+          acabou de entrar — vale mais que qualquer texto de boas-vindas. */}
+      <div className="-mx-4 overflow-hidden">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={fachadaUrl}
+          alt={`Fachada da ${nomeLoja}`}
+          className="h-40 w-full object-cover sm:h-52"
+        />
+      </div>
+
+      <div className="pt-6 text-center">
         <h1 className="text-2xl font-black tracking-tight text-tinta-900">{nomeLoja}</h1>
         {descricao && <p className="mt-1 text-tinta-500">{descricao}</p>}
         <p className="mt-6 font-semibold text-tinta-900">Você está no restaurante agora?</p>
@@ -52,7 +65,7 @@ export function EscolhaModo({
             aoEscolher={() => escolher('local')}
             carregando={salvando}
             icone={<UtensilsCrossed className="h-6 w-6" />}
-            titulo="Sim, estou no salão"
+            titulo="Sim, estou no restaurante"
             descricao={
               precoBuffetCentavos
                 ? 'Buffet livre e bebidas servidos na mesa. Pague pelo celular e sirva-se.'

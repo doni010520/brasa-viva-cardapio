@@ -128,3 +128,15 @@ export async function avisarMudancaDeStatus(
 
   return enviarTexto(pedido.cliente_telefone, texto)
 }
+
+/**
+ * Código de acesso ao histórico. Diferente dos outros avisos, aqui a falha
+ * IMPORTA: se não sair, a pessoa fica sem entrar, então quem chamou precisa
+ * saber e mostrar um recado honesto na tela.
+ */
+export async function enviarCodigoAcesso(telefone: string, codigoAcesso: string, nomeLoja: string) {
+  return enviarTexto(
+    telefone,
+    `*${nomeLoja}*\n\nSeu código de acesso é *${codigoAcesso}*.\n\nEle vale por 10 minutos e serve só para você ver os seus pedidos.\nSe não foi você que pediu, é só ignorar esta mensagem — e não passe este código para ninguém.`
+  )
+}

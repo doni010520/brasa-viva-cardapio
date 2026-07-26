@@ -76,6 +76,23 @@ Array.isArray(admins.corpo) && admins.corpo.length === 0
   ? bom('lista de administradores NÃO vaza')
   : ruim('e-mails de administradores vazaram')
 
+// O cofre do login do cliente. Se um destes vazar, qualquer um entra como
+// qualquer um e vê nome, endereço e histórico de compras de quem quiser.
+const codigos = await comoAnonimo('codigos_acesso?select=telefone,codigo_hash')
+Array.isArray(codigos.corpo) && codigos.corpo.length === 0
+  ? bom('códigos de acesso NÃO vazam')
+  : ruim(`códigos de acesso vazaram: ${JSON.stringify(codigos.corpo)?.slice(0, 200)}`)
+
+const sessoes = await comoAnonimo('sessoes_cliente?select=token_hash,telefone')
+Array.isArray(sessoes.corpo) && sessoes.corpo.length === 0
+  ? bom('sessões de cliente NÃO vazam')
+  : ruim(`sessões de cliente vazaram: ${JSON.stringify(sessoes.corpo)?.slice(0, 200)}`)
+
+const clientes = await comoAnonimo('clientes?select=nome,telefone')
+Array.isArray(clientes.corpo) && clientes.corpo.length === 0
+  ? bom('cadastro de clientes NÃO vaza')
+  : ruim(`cadastro de clientes vazou: ${JSON.stringify(clientes.corpo)?.slice(0, 200)}`)
+
 console.log('\n=== 2) O que a chave pública consegue alterar ===')
 
 const idProduto = (await comoAnonimo('produtos?select=id&limit=1')).corpo?.[0]?.id

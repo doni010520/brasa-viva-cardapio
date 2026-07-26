@@ -185,6 +185,16 @@ for (const aparelho of APARELHOS) {
   await auditar(pagina, 'checkout', aparelho)
   await pagina.screenshot({ path: `${TIROS}/${aparelho.nome}-05-checkout.png`, fullPage: true })
 
+  await pagina.goto(`${BASE}/meus-pedidos`, { waitUntil: 'networkidle' })
+  await pagina.waitForTimeout(1200)
+  await auditar(pagina, 'meus pedidos', aparelho)
+  await pagina.screenshot({ path: `${TIROS}/${aparelho.nome}-06-meus-pedidos.png`, fullPage: true })
+
+  await pagina.goto(`${BASE}/entrar`, { waitUntil: 'networkidle' })
+  await pagina.waitForTimeout(600)
+  await auditar(pagina, 'entrar com WhatsApp', aparelho)
+  await pagina.screenshot({ path: `${TIROS}/${aparelho.nome}-07-entrar.png`, fullPage: true })
+
   // --------- painel do dono (tablet importa mais) ---------
   await pagina.goto(`${BASE}/admin/login`, { waitUntil: 'networkidle' })
   await pagina.waitForTimeout(500)

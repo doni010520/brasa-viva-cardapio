@@ -114,7 +114,15 @@ try {
 
   const esperado = (
     await sql(
-      "select public.relatorio_vendas(date_trunc('day', now()) - interval '29 days', date_trunc('day', now()) + interval '1 day') as r;"
+      // a janela precisa ser calculada no fuso da LOJA, igual ao app faz.
+      // Em UTC, depois das 21h daqui ja e o dia seguinte, e a comparacao
+      // pegava um periodo diferente do que a tela mostra.
+      `select public.relatorio_vendas(
+         (date_trunc('day', now() at time zone 'America/Sao_Paulo') - interval '29 days')
+           at time zone 'America/Sao_Paulo',
+         (date_trunc('day', now() at time zone 'America/Sao_Paulo') + interval '1 day')
+           at time zone 'America/Sao_Paulo'
+       ) as r;`
     )
   )[0].r
 
@@ -156,7 +164,11 @@ try {
   await pagina.waitForTimeout(1200)
   const hoje = (
     await sql(
-      "select public.relatorio_vendas(date_trunc('day', now()), date_trunc('day', now()) + interval '1 day') as r;"
+      `select public.relatorio_vendas(
+         date_trunc('day', now() at time zone 'America/Sao_Paulo') at time zone 'America/Sao_Paulo',
+         (date_trunc('day', now() at time zone 'America/Sao_Paulo') + interval '1 day')
+           at time zone 'America/Sao_Paulo'
+       ) as r;`
     )
   )[0].r
   const semVenda = hoje.resumo.pedidos === 0

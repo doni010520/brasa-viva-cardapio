@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { MapPin, Phone } from 'lucide-react'
+import { Camera, Lock, MapPin, Phone, Receipt } from 'lucide-react'
 import { ProvedorCarrinho } from '@/components/carrinho-contexto'
 import { BotaoCarrinho } from '@/components/loja/botao-carrinho'
 import { FaixaModo } from '@/components/loja/faixa-modo'
@@ -81,12 +81,40 @@ export default async function LayoutLoja({ children }: { children: React.ReactNo
                 {config.telefone}
               </p>
             )}
-            <p className="pt-2 text-xs text-tinta-400">
-              Pedidos para retirada no balcão.{' '}
-              <Link href="/admin" className="underline underline-offset-2">
-                Acesso do restaurante
+            {config.instagram_url && (
+              <a
+                href={config.instagram_url}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-2 pt-1 font-medium text-tinta-600 hover:text-tinta-900"
+              >
+                <Camera className="h-4 w-4 shrink-0" />
+                Siga a gente no Instagram
+              </a>
+            )}
+
+            <div className="pt-3">
+              <Link
+                href="/meus-pedidos"
+                className="inline-flex items-center gap-2 font-medium text-tinta-600 hover:text-tinta-900"
+              >
+                <Receipt className="h-4 w-4 shrink-0" />
+                Meus pedidos
               </Link>
-            </p>
+            </div>
+
+            <div className="pt-4">
+              <Link
+                href="/admin"
+                className="inline-flex items-center gap-2 rounded-xl border border-tinta-200 bg-white px-4 py-2.5 text-sm font-semibold text-tinta-600 transition hover:border-tinta-300 hover:text-tinta-900"
+              >
+                <Lock className="h-4 w-4" />
+                Acesso da equipe
+              </Link>
+              <p className="mt-1.5 text-xs text-tinta-400">
+                Só para quem trabalha na {config.nome}.
+              </p>
+            </div>
           </div>
         </footer>
       </div>

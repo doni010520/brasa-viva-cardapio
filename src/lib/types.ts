@@ -65,6 +65,7 @@ export type Configuracoes = {
   aceita_pix: boolean
   aceita_cartao: boolean
   pix_expira_min: number
+  foto_fachada_url: string | null
   // campanha pós-pagamento
   instagram_url: string | null
   campanha_ativa: boolean
