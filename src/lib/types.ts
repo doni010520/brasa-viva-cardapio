@@ -56,6 +56,10 @@ export type Configuracoes = {
   endereco: string | null
   aberto_manual: boolean
   tempo_preparo_min: number
+  /** Agente de IA que atende pelo WhatsApp. Nasce desligado. */
+  agente_whatsapp_ativo: boolean
+  agente_nome: string | null
+  agente_instrucoes: string | null
   antecedencia_min: number
   pedido_minimo_centavos: number
   aceita_pagamento_online: boolean

@@ -28,7 +28,12 @@ export function numeroParaEnvio(telefone: string) {
   return comDdi.length >= 12 && comDdi.length <= 13 ? comDdi : null
 }
 
-async function enviarTexto(telefone: string, texto: string) {
+/**
+ * Manda uma mensagem de texto. Exportada porque o agente de IA também fala
+ * por aqui — e o silencioso "return false" quando não há uazapi configurada
+ * é o que segura o sistema de pé em ambiente de teste.
+ */
+export async function enviarTexto(telefone: string, texto: string) {
   if (!whatsappConfigurado()) return false
 
   const numero = numeroParaEnvio(telefone)

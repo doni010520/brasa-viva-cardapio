@@ -100,6 +100,20 @@ UAZAPI_URL=
 UAZAPI_TOKEN=
 ```
 
+Para ligar o **agente de IA no WhatsApp**, adicione também:
+
+```
+ANTHROPIC_API_KEY=<ou OPENAI_API_KEY, uma das duas>
+WHATSAPP_WEBHOOK_TOKEN=<invente uma senha longa>
+```
+
+⚠️ O `WHATSAPP_WEBHOOK_TOKEN` protege um endereço que é público na internet e
+**fecha pedido de verdade**. Sem ele preenchido o webhook responde 401 para
+todo mundo — de propósito. Depois, na uazapi, cadastre o webhook
+`https://SEU-DOMINIO/api/whatsapp/webhook` com esse token no cabeçalho
+`x-webhook-token`, e ligue a chave em *WhatsApp* no painel (ela nasce
+desligada).
+
 ⚠️ A **service_role** é a chave de administrador do banco: ela ignora todas as
 regras de segurança. Ela só pode existir aqui e no seu `.env.local`.
 

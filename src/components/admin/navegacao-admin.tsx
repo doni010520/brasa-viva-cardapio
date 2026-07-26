@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation'
 import {
   BarChart3,
   BookOpen,
+  Bot,
   QrCode,
   Settings,
   Tag,
@@ -20,6 +21,7 @@ const ITENS = [
   { href: '/admin/clientes', rotulo: 'Clientes', icone: Users, soDono: true },
   { href: '/admin/mesas', rotulo: 'Mesas', icone: QrCode, soDono: true },
   { href: '/admin/cupons', rotulo: 'Cupons', icone: Tag, soDono: true },
+  { href: '/admin/whatsapp', rotulo: 'WhatsApp', icone: Bot, soDono: true },
   { href: '/admin/relatorios', rotulo: 'Relatórios', icone: BarChart3, soDono: true },
   { href: '/admin/usuarios', rotulo: 'Equipe', icone: UserCog, soDono: true },
   { href: '/admin/config', rotulo: 'Configurações', icone: Settings, soDono: true },
