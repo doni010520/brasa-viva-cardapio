@@ -11,6 +11,7 @@
  */
 import { chromium } from 'playwright'
 import { mkdir } from 'node:fs/promises'
+import { env, EMAIL_ADMIN, SENHA_ADMIN } from './credenciais.mjs'
 
 const BASE = 'http://localhost:3000'
 const TIROS = 'C:/Users/adoni/cardapio-online/.testes/mobile'
@@ -22,8 +23,8 @@ const APARELHOS = [
   { nome: 'tablet-restaurante', largura: 820, altura: 1180 },
 ]
 
-const EMAIL = 'financeiro@radiobrasdigital.com.br'
-const SENHA = 'BrasaViva#2026'
+const EMAIL = EMAIL_ADMIN
+const SENHA = SENHA_ADMIN
 
 let problemas = 0
 

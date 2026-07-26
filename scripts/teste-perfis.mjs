@@ -8,6 +8,7 @@ import { chromium } from 'playwright'
 import { readFile, mkdir } from 'node:fs/promises'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { EMAIL_ADMIN, SENHA_ADMIN } from './credenciais.mjs'
 
 const raiz = join(dirname(fileURLToPath(import.meta.url)), '..')
 const TIROS = join(raiz, '.testes')
@@ -39,8 +40,11 @@ async function sql(query) {
 }
 
 const BASE = 'http://localhost:3000'
-const DONO = { email: 'financeiro@radiobrasdigital.com.br', senha: 'BrasaViva#2026' }
-const ATENDENTE = { email: 'atendente.teste@brasaviva.local', senha: 'Atendente#2026' }
+const DONO = { email: EMAIL_ADMIN, senha: SENHA_ADMIN }
+const ATENDENTE = {
+  email: 'atendente.teste@brasaviva.local',
+  senha: env.TESTE_SENHA_ATENDENTE ?? 'trocar-no-env-local',
+}
 
 let ok = 0
 let falhas = 0

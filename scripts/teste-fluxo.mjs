@@ -7,13 +7,14 @@
  */
 import { chromium } from 'playwright'
 import { mkdir, readFile } from 'node:fs/promises'
+import { env, EMAIL_ADMIN, SENHA_ADMIN } from './credenciais.mjs'
 
 const BASE = 'http://localhost:3000'
 const TIROS = 'C:/Users/adoni/cardapio-online/.testes'
 await mkdir(TIROS, { recursive: true })
 
-const EMAIL = 'financeiro@radiobrasdigital.com.br'
-const SENHA = 'BrasaViva#2026'
+const EMAIL = EMAIL_ADMIN
+const SENHA = SENHA_ADMIN
 
 let passos = 0
 let falhas = 0

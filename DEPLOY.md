@@ -6,9 +6,9 @@ Passo a passo para colocar o sistema no ar na VPS.
 
 ## Antes de começar
 
-O banco **já está pronto** — é o mesmo Supabase que você usou nos testes
-(`xlovjphnpqugtishcgow`). As 11 migrações já rodaram lá. Não precisa refazer
-nada no banco para o deploy.
+O banco **já está pronto** — é o mesmo projeto Supabase usado nos testes, com
+as 11 migrações rodadas. Não precisa refazer nada no banco para o deploy.
+Os valores exatos estão no seu `.env.local`, que nunca vai para o git.
 
 Você vai precisar de:
 
@@ -36,8 +36,8 @@ Na aba **Source**:
 | Branch | `main` |
 | Build Path | `/` |
 
-> O repositório é privado. Se o EasyPanel ainda não tem acesso à sua conta,
-> ele vai pedir a autorização do GitHub nesta tela.
+> Se o EasyPanel ainda não tem acesso à sua conta do GitHub, ele pede a
+> autorização nesta tela.
 
 Na aba **Build**:
 
@@ -57,7 +57,7 @@ do código no momento do build**. Configurar só em "Environment" não funciona:
 o app compila sem esses valores e depois aponta para `localhost`.
 
 ```
-NEXT_PUBLIC_SUPABASE_URL=https://xlovjphnpqugtishcgow.supabase.co
+NEXT_PUBLIC_SUPABASE_URL=https://SEU-PROJETO.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=<a chave anon do .env.local>
 NEXT_PUBLIC_URL_BASE=https://SEU-DOMINIO
 NEXT_PUBLIC_FUSO_HORARIO=America/Sao_Paulo
@@ -80,7 +80,7 @@ Na aba **Environment**, as variáveis que ficam só no servidor:
 ```
 SUPABASE_SERVICE_ROLE_KEY=<a chave service_role do .env.local>
 
-NEXT_PUBLIC_SUPABASE_URL=https://xlovjphnpqugtishcgow.supabase.co
+NEXT_PUBLIC_SUPABASE_URL=https://SEU-PROJETO.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=<a mesma chave anon>
 NEXT_PUBLIC_URL_BASE=https://SEU-DOMINIO
 NEXT_PUBLIC_FUSO_HORARIO=America/Sao_Paulo
@@ -163,8 +163,8 @@ Depois, confira as três telas:
 | `https://SEU-DOMINIO/admin` | tela de login |
 | `https://SEU-DOMINIO/mesa/1` | abre o cardápio do salão, Mesa 1 |
 
-Entre no painel com `financeiro@radiobrasdigital.com.br`. **Troque a senha**
-em *Equipe → ícone da chave*.
+Entre no painel com o e-mail do dono. **Troque a senha assim que entrar**, em
+*Equipe → ícone da chave* — a senha atual foi usada em ambiente de teste.
 
 ---
 
