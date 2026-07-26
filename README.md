@@ -168,20 +168,24 @@ servidor reconfere na hora de fechar o pedido. Bairro fora da lista simplesmente
 "está aberto agora" e de horários de retirada passa por `src/lib/tempo.ts`, no fuso da loja.
 Horário que vira a madrugada (18:00 às 02:00) é tratado.
 
-**O cliente não tem conta — e isso é decisão, não falta.** Ninguém cria login, senha ou
-cadastro para pedir um almoço. O que amarra tudo é o **telefone, obrigatório no checkout**: o
-gatilho da migration 0007 monta a ficha do cliente sozinho a cada pedido, e é dali que sai o
-histórico do dono em `/admin/clientes` — quem comprou, o quê, quando, há quanto tempo não volta,
-aniversário.
+**O cliente entra sem senha, mas não entra sem prova.** O histórico dele fica em
+`/meus-pedidos`. Sem entrar, a lista sai dos ids que o próprio navegador guardou na hora da compra
+— funciona sozinho, mas some se trocar de celular. Para levar o histórico junto, `/entrar` manda um
+código de 6 dígitos no WhatsApp: **o número é o usuário, o código é a senha**, e ninguém decora nada.
+Quem entra também ganha o checkout preenchido.
 
-Do lado do cliente, o histórico tem dois lugares: `/meus-pedidos`, que mostra os pedidos que
-aquele navegador guardou (por isso o `app/manifest.ts` — instalado na tela de início, o site
-ganha armazenamento próprio e o iPhone para de limpar os dados), e a **conversa de WhatsApp**,
-onde cada confirmação deixou o link do pedido.
+O código existe por um motivo só: sem ele, quem soubesse o telefone de alguém veria o nome, o
+endereço de entrega e tudo que a pessoa já comprou. Ele vale 10 minutos, uma vez só, no máximo 5
+tentativas e 5 pedidos por hora; o banco guarda apenas o hash dele e o hash do token da sessão
+(`src/lib/cliente-sessao.ts`).
 
-O que deliberadamente **não** existe é buscar pedido por telefone: quem soubesse o número de
-alguém veria o nome, o endereço de entrega e tudo que a pessoa já comprou. Isso só seria seguro
-com uma prova de posse do número — exatamente a burocracia que o sistema não quer ter.
+**E entra uma vez só.** A sessão é uma janela deslizante: cada visita empurra o vencimento 90 dias
+para frente, então quem pede de vez em quando nunca mais vê tela de login. O cookie vai no teto que
+o navegador aceita (400 dias) e quem manda no prazo é o banco, porque página renderizada no servidor
+não pode reescrever cookie.
+
+**O telefone continua obrigatório no checkout**, com ou sem login: é ele que amarra o pedido à ficha
+do cliente (gatilho da migration 0007) e é dali que sai o histórico do dono em `/admin/clientes`.
 
 **O WhatsApp não fecha pedido — e isso é decisão, não limitação.** O chatbot
 (`src/lib/agente/`) só tem três ferramentas: guardar o nome, consultar o status do pedido e

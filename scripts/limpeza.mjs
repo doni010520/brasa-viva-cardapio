@@ -56,6 +56,12 @@ export async function limparDadosDeTeste(sql, extras = {}) {
   await sql(`delete from public.pedidos where ${porTelefone} or ${porNome};`)
   await sql(`delete from public.clientes where telefone in (${lista(telefones)});`)
   await sql(`delete from public.conversas_whatsapp where telefone in (${lista(telefones)});`)
+
+  // Códigos e sessões do login. Sem isto, rodar o teste três vezes seguidas
+  // estoura o limite de 5 códigos por hora e ele falha por um motivo que não
+  // é defeito nenhum — é a proteção funcionando.
+  await sql(`delete from public.codigos_acesso where telefone in (${lista(telefones)});`)
+  await sql(`delete from public.sessoes_cliente where telefone in (${lista(telefones)});`)
   // comanda órfã ficaria na fila do agente de impressão para sempre
   await sql('delete from public.impressoes where pedido_id not in (select id from public.pedidos);')
 }

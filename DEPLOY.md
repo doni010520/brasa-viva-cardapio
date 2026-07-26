@@ -100,6 +100,16 @@ UAZAPI_URL=
 UAZAPI_TOKEN=
 ```
 
+O cliente entra no histórico dele com um código de 6 dígitos que chega no WhatsApp.
+Enquanto a uazapi **não** estiver conectada, esse código não tem como sair — então, só
+para a demonstração, adicione:
+
+
+
+⚠️ Ligada, ela derruba a proteção: qualquer pessoa digita o número de outra e vê o
+histórico dela. **Apague no dia em que a loja abrir para o público.** Preenchendo
+`UAZAPI_URL`/`UAZAPI_TOKEN` a chave passa a ser ignorada sozinha.
+
 Para ligar o **atendimento automático no WhatsApp**, adicione também:
 
 ```
@@ -196,6 +206,7 @@ Antes de divulgar, em **Configurações**:
 - [ ] **Horário de funcionamento** de cada dia
 - [ ] **Bairros e taxas** de entrega
 - [ ] **Link do Instagram**, se for usar a campanha do bombom
+- [ ] Apagar `PERMITIR_CODIGO_NA_TELA` do Environment (ou conectar a uazapi)
 
 Em **Cardápio**, troque as fotos: as atuais são de banco de imagens, só para
 apresentação. As reais dos pratos ficam muito melhores — e evitam qualquer

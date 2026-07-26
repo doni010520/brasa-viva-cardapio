@@ -102,7 +102,9 @@ try {
   await dono.getByLabel('Nome').fill('Atendente de Teste')
   await dono.getByLabel(/E-mail/).fill(ATENDENTE.email)
   await dono.getByLabel('Senha', { exact: true }).fill(ATENDENTE.senha)
-  await dono.getByLabel('Perfil').selectOption('atendente')
+  // exact: cada linha da lista tem um "Perfil de Fulano"; sem isto, o
+  // seletor fica ambíguo assim que existe mais de um membro na equipe
+  await dono.getByLabel('Perfil', { exact: true }).selectOption('atendente')
   await dono.getByRole('button', { name: /Criar acesso/ }).click()
   await dono.waitForTimeout(3500)
 
@@ -217,23 +219,50 @@ try {
   )
 
   // ------------------------------------------- 6. o último dono é protegido
+  //
+  // Este teste mexe em conta de verdade, então roda inteiro dentro de uma
+  // transação que termina em ROLLBACK. Já aconteceu de uma versão anterior
+  // rebaixar o dono do painel de verdade e trancar o acesso.
+  //
+  // Dentro da transação ele monta o cenário que interessa: deixa UM dono só.
+  // Com dois donos a trava deve mesmo deixar passar — o que ela impede é a
+  // casa ficar sem nenhum.
   console.log('\n6) Trava do último dono')
   const tentativa = await sql(`
+    begin;
+
+    -- cenário: só sobra um dono, que é o nosso
+    update public.admins set papel = 'atendente'
+     where papel = 'dono' and email <> '${DONO.email}';
+
     do $$
     begin
       begin
         update public.admins set papel = 'atendente'
          where email = '${DONO.email}';
-        raise notice 'PASSOU';
       exception when others then
-        raise notice 'BARRADO';
+        null;  -- barrado é o que se espera
       end;
     end $$;
+
     select papel from public.admins where email = '${DONO.email}';
+
+    rollback;
   `)
   conferir(
     tentativa[0]?.papel === 'dono',
     'o banco recusa rebaixar o último dono (continua dono)'
+  )
+
+  // Cinto e suspensório: se por algum motivo o rollback não pegou, arruma.
+  const depoisDaTrava = await sql(
+    `update public.admins set papel = 'dono'
+      where email = '${DONO.email}' and papel <> 'dono'
+      returning email;`
+  )
+  conferir(
+    depoisDaTrava.length === 0,
+    'o teste não deixou o dono rebaixado no banco de verdade'
   )
 } catch (e) {
   falhas++

@@ -65,16 +65,9 @@ try {
     await pagina.getByRole('link', { name: /Ver cardápio/ }).isVisible(),
     'oferece caminho de volta para o cardápio'
   )
-  // O "Acesso da equipe" do rodapé é do dono e continua existindo; o que não
-  // pode existir é login de CLIENTE.
   conferir(
-    (await pagina.locator('a[href="/entrar"]').count()) === 0 &&
-      (await pagina.getByText(/Entrar com o WhatsApp|código de 6 dígitos/i).count()) === 0,
-    'não existe login de cliente em lugar nenhum'
-  )
-  conferir(
-    (await pagina.request.get(`${BASE}/entrar`)).status() === 404,
-    'a rota /entrar deixou de existir'
+    await pagina.getByRole('link', { name: /Entrar com o WhatsApp/ }).isVisible(),
+    'convida a entrar para levar o histórico para outros aparelhos'
   )
   await pagina.screenshot({ path: `${TIROS}/mp-01-vazio.png`, fullPage: true })
 
@@ -234,6 +227,120 @@ try {
     'id inválido ou chutado não devolve pedido nenhum'
   )
   await outroCelular.close()
+
+  // ------------------------------------------- 6b. TROCAR DE APARELHO
+  // Este é o caso que motivou o login: pedir num celular e olhar noutro.
+  console.log('\n6b) Entrar com o WhatsApp em OUTRO aparelho')
+  const celularNovo = await navegador.newContext({ viewport: { width: 420, height: 900 } })
+  const outro = await celularNovo.newPage()
+
+  await outro.goto(`${BASE}/entrar`, { waitUntil: 'networkidle' })
+  await outro.waitForTimeout(600)
+
+  await outro.getByLabel('Seu WhatsApp').fill('123')
+  await outro.getByRole('button', { name: /Receber código/ }).click()
+  await outro.waitForTimeout(1500)
+  conferir(await outro.getByText(/Confira o número/).isVisible(), 'número curto é recusado')
+
+  await outro.getByLabel('Seu WhatsApp').fill('71988886666')
+  await outro.getByRole('button', { name: /Receber código/ }).click()
+  await outro.waitForTimeout(2500)
+  conferir(
+    await outro.getByLabel(/Código de 6 dígitos/).isVisible(),
+    'tela pede o código de 6 dígitos'
+  )
+  await outro.screenshot({ path: `${TIROS}/mp-04-codigo.png`, fullPage: true })
+
+  let codigoReal = null
+  if (await outro.getByText(/Modo demonstração/).isVisible().catch(() => false)) {
+    const texto = await outro.getByText(/o código aparece aqui/).textContent()
+    codigoReal = texto?.match(/(\d{6})/)?.[1] ?? null
+    ok('sem WhatsApp conectado, o código aparece na tela COM aviso de demonstração')
+  }
+
+  await outro.getByLabel(/Código de 6 dígitos/).fill(codigoReal === '000000' ? '111111' : '000000')
+  await outro.getByRole('button', { name: /Ver meus pedidos/ }).click()
+  await outro.waitForTimeout(2000)
+  conferir(
+    (await outro.getByText(/Código errado|Código expirado/).count()) > 0,
+    'código errado é recusado'
+  )
+  conferir(!outro.url().includes('/meus-pedidos'), 'código errado não deixa entrar')
+
+  if (codigoReal) {
+    await outro.getByLabel(/Código de 6 dígitos/).fill(codigoReal)
+    await outro.getByRole('button', { name: /Ver meus pedidos/ }).click()
+    await outro.waitForURL('**/meus-pedidos', { timeout: 20000 })
+    await outro.waitForTimeout(2000)
+
+    conferir(
+      await outro.getByText(/Entrou como|Entrou com/).isVisible(),
+      'entrou e a tela diz de quem é a conta'
+    )
+    conferir(
+      await outro.getByText('Cocada baiana').first().isVisible(),
+      'O PEDIDO APARECE no aparelho novo, sem nunca ter pedido nele'
+    )
+    await outro.screenshot({ path: `${TIROS}/mp-05-logado.png`, fullPage: true })
+
+    // o mesmo código não pode servir duas vezes
+    const terceiro = await navegador.newContext({ viewport: { width: 420, height: 900 } })
+    const reuso = await terceiro.newPage()
+    await reuso.goto(`${BASE}/entrar`, { waitUntil: 'networkidle' })
+    await reuso.getByLabel('Seu WhatsApp').fill('71988886666')
+    await reuso.getByRole('button', { name: /Receber código/ }).click()
+    await reuso.waitForTimeout(2000)
+    await reuso.getByLabel(/Código de 6 dígitos/).fill(codigoReal)
+    await reuso.getByRole('button', { name: /Ver meus pedidos/ }).click()
+    await reuso.waitForTimeout(2000)
+    conferir(!reuso.url().includes('/meus-pedidos'), 'código já usado não entra de novo')
+    await terceiro.close()
+
+    // a sessão sobrevive a fechar o navegador
+    const biscoito = (await celularNovo.cookies()).find((c) => c.name === 'bv_cliente')
+    conferir(biscoito?.httpOnly === true, 'sessão em cookie httpOnly (JavaScript não lê)')
+    const dias = (biscoito.expires * 1000 - Date.now()) / 86400000
+    conferir(dias > 300, `cookie dura ${Math.round(dias)} dias — não some ao fechar o navegador`)
+
+    const abaNova = await celularNovo.newPage()
+    await abaNova.goto(`${BASE}/meus-pedidos`, { waitUntil: 'networkidle' })
+    await abaNova.waitForTimeout(1500)
+    conferir(
+      await abaNova.getByText(/Entrou como|Entrou com/).isVisible(),
+      'abrir de novo mais tarde continua logado'
+    )
+    await abaNova.close()
+
+    // checkout já preenchido
+    await outro.goto(BASE, { waitUntil: 'networkidle' })
+    await outro.getByRole('button', { name: /é para viagem/i }).click()
+    await outro.waitForTimeout(1500)
+    await outro.getByRole('button', { name: /Cocada baiana/ }).first().click()
+    await outro.waitForTimeout(400)
+    await outro.getByRole('button', { name: /^Adicionar/ }).click()
+    await outro.waitForTimeout(500)
+    await outro.goto(`${BASE}/checkout`, { waitUntil: 'networkidle' })
+    await outro.waitForTimeout(1200)
+    conferir(
+      (await outro.getByLabel('Nome').inputValue()) === 'Cliente Historico',
+      'checkout já vem com o nome de quem entrou'
+    )
+
+    // sair mata a sessão no banco, não só no navegador
+    await outro.goto(`${BASE}/meus-pedidos`, { waitUntil: 'networkidle' })
+    await outro.waitForTimeout(1500)
+    await outro.getByRole('button', { name: 'Sair' }).click()
+    await outro.waitForTimeout(2000)
+    await outro.goto(`${BASE}/meus-pedidos`, { waitUntil: 'networkidle' })
+    await outro.waitForTimeout(1500)
+    conferir(
+      await outro.getByRole('link', { name: /Entrar com o WhatsApp/ }).isVisible(),
+      'depois de sair, volta a ser um aparelho anônimo'
+    )
+  } else {
+    falha('não consegui obter o código para concluir o login')
+  }
+  await celularNovo.close()
 
   // ------------------------------------------- 7. caminho até a tela
   console.log('\n7) Caminho até a tela')
