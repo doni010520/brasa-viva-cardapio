@@ -188,8 +188,43 @@ try {
     await pagina.getByText(/Pedido confirmado|Pagamento confirmado/).isVisible(),
     'confirmação aparece'
   )
-  const codigo = await pagina.locator('.text-6xl').textContent()
+  const codigo = await pagina.locator('.tabular-nums.text-6xl').first().textContent()
   console.log(`     código de retirada: ${codigo?.trim()}`)
+
+  // ------------------------------------------ 5a. o modal da campanha
+  // Ele espera um respiro antes de abrir, para o "pedido confirmado" ser
+  // lido primeiro. É o destaque da tela, então tem que aparecer sozinho.
+  const modal = pagina.getByRole('dialog')
+  await modal.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {})
+  conferir(await modal.isVisible(), 'campanha aparece em modal, por cima da página')
+  // dentro do modal: o mesmo título também está no cartão da página
+  conferir(
+    await modal.getByRole('heading', { name: /bombom|Poste/i }).isVisible(),
+    'o convite da campanha está no modal'
+  )
+  const paraInstagram = modal.locator('a[href*="instagram"]')
+  conferir(
+    (await paraInstagram.count()) > 0,
+    'o botão do modal leva para o Instagram da casa'
+  )
+  await pagina.screenshot({ path: `${TIROS}/05-campanha-modal.png` })
+
+  await pagina.getByRole('button', { name: 'Agora não' }).click()
+  await pagina.waitForTimeout(400)
+  conferir(!(await modal.isVisible()), 'dá para fechar o modal')
+  conferir(
+    (await pagina.locator('a[href*="instagram"]').count()) > 0,
+    'fechado o modal, a campanha continua na página (não some para sempre)'
+  )
+
+  // segunda visita não repete o convite: uma vez por pedido
+  await pagina.reload({ waitUntil: 'networkidle' })
+  await pagina.waitForTimeout(2000)
+  conferir(
+    !(await pagina.getByRole('dialog').isVisible()),
+    'o modal NÃO volta a abrir no mesmo pedido'
+  )
+
   await pagina.screenshot({ path: `${TIROS}/05-obrigado.png`, fullPage: true })
 
   // ------------------------------------------------ 5b. acompanhamento

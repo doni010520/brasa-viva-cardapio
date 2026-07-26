@@ -96,3 +96,117 @@ body {
     display: none !important;
   }
 }
+
+/* ---------------------------------------------------------------------
+ * Modal da campanha (tela de agradecimento).
+ *
+ * É o único momento em que o cliente está feliz, com o celular na mão e sem
+ * pressa. A animação existe para essa mensagem não passar despercebida —
+ * mas quem pediu menos movimento no sistema recebe menos movimento.
+ * ------------------------------------------------------------------ */
+
+@keyframes vela-surge {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Entra de baixo com uma "chegadinha" no fim, tipo carimbo. */
+@keyframes cartaz-entra {
+  0% {
+    opacity: 0;
+    transform: translateY(28px) scale(0.9);
+  }
+  60% {
+    opacity: 1;
+    transform: translateY(0) scale(1.03);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* O emoji chega depois do cartaz e dá dois pulinhos. */
+@keyframes bombom-pula {
+  0% {
+    opacity: 0;
+    transform: scale(0.3) rotate(-18deg);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.25) rotate(8deg);
+  }
+  70% {
+    transform: scale(0.94) rotate(-4deg);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) rotate(0);
+  }
+}
+
+/* Brilho pulsando atrás do emoji, para o olho ir direto nele. */
+@keyframes brasa-pulsa {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.6;
+    transform: scale(1.12);
+  }
+}
+
+/* Papel picado caindo. Cada pedaço recebe o próprio atraso por style. */
+@keyframes papel-cai {
+  0% {
+    opacity: 0;
+    transform: translateY(-10%) rotate(0deg);
+  }
+  10% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(560%) rotate(540deg);
+  }
+}
+
+.anima-vela {
+  animation: vela-surge 0.25s ease-out;
+}
+.anima-cartaz {
+  animation: cartaz-entra 0.42s cubic-bezier(0.22, 1.2, 0.36, 1);
+}
+.anima-bombom {
+  animation: bombom-pula 0.6s 0.15s cubic-bezier(0.22, 1.2, 0.36, 1) backwards;
+}
+.anima-brasa {
+  animation: brasa-pulsa 2.4s ease-in-out infinite;
+}
+.anima-papel {
+  animation: papel-cai 2.6s linear forwards;
+}
+
+/*
+ * Quem pediu menos movimento no sistema operacional recebe o conteúdo
+ * inteiro, sem nada se mexendo. A campanha continua legível.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .anima-vela,
+  .anima-cartaz,
+  .anima-bombom,
+  .anima-brasa,
+  .anima-papel,
+  .anima-entrada {
+    animation: none !important;
+  }
+  .anima-papel {
+    display: none;
+  }
+}

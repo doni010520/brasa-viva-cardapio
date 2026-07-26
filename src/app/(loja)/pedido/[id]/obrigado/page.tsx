@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 // o lucide não traz ícone do Instagram (marca registrada); Camera diz a mesma coisa
 import { Camera, Check, Receipt } from 'lucide-react'
+import { ModalCampanha } from '@/components/loja/modal-campanha'
 import { Botao, Cartao } from '@/components/ui'
 import { buscarConfiguracoes, buscarPedido } from '@/lib/dados'
 import { moeda } from '@/lib/format'
@@ -49,7 +50,22 @@ export default async function PaginaObrigado({ params }: { params: Promise<{ id:
         <p className="mt-1 text-sm text-tinta-500">{moeda(pedido.total_centavos)}</p>
       </div>
 
-      {/* ---------- Campanha ---------- */}
+      {/* ---------- Campanha ----------
+          Vem em duas formas de propósito: o modal, que é o destaque e aparece
+          uma vez só por pedido, e o cartão abaixo, que continua na página
+          para quem fechou o modal e depois se interessou. */}
+      {temCampanha && (
+        <ModalCampanha
+          pedidoId={pedido.id}
+          titulo={config.campanha_titulo ?? 'Poste e ganhe!'}
+          texto={config.campanha_texto}
+          emoji={config.campanha_emoji ?? '🍫'}
+          rotuloBotao={config.campanha_botao ?? 'Quero meu bombom'}
+          instagramUrl={config.instagram_url!}
+          nomeLoja={config.nome}
+        />
+      )}
+
       {temCampanha && (
         <Cartao className="border-marca mt-8 overflow-hidden border-2">
           <div className="bg-marca px-5 py-6 text-center text-white">

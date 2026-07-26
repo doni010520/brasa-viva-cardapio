@@ -187,7 +187,7 @@ try {
 
   if (virouPedido) {
     // se passou, o preço tem que ter sido corrigido pelo servidor
-    const numero = await pagina.locator('.text-6xl').textContent()
+    const numero = await pagina.locator('.tabular-nums.text-6xl').first().textContent()
     console.log(`     virou pedido #${numero?.trim()} — conferindo o valor gravado...`)
     ruim('pedido com opção inválida foi aceito (ver valor no banco)')
   } else {
