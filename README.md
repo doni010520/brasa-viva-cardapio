@@ -134,28 +134,20 @@ servidor reconfere na hora de fechar o pedido. Bairro fora da lista simplesmente
 "está aberto agora" e de horários de retirada passa por `src/lib/tempo.ts`, no fuso da loja.
 Horário que vira a madrugada (18:00 às 02:00) é tratado.
 
-**O cliente entra sem senha, mas não entra sem prova.** O histórico dele fica em
-`/meus-pedidos`. Sem login, a lista sai dos ids que o próprio navegador guardou na hora da
-compra — funciona sozinho, mas some se trocar de celular. Para ver tudo de qualquer aparelho,
-`/entrar` manda um código de 6 dígitos no WhatsApp: o número é o usuário, o código é a senha,
-e ninguém decora nada. O código existe por um motivo só — sem ele, quem soubesse o telefone de
-alguém veria o nome, o endereço de entrega e tudo que a pessoa já comprou. Código vale 10
-minutos, uma vez só, no máximo 5 tentativas; o banco guarda apenas o hash dele e o hash do
-token da sessão (`src/lib/cliente-sessao.ts`).
+**O cliente não tem conta — e isso é decisão, não falta.** Ninguém cria login, senha ou
+cadastro para pedir um almoço. O que amarra tudo é o **telefone, obrigatório no checkout**: o
+gatilho da migration 0007 monta a ficha do cliente sozinho a cada pedido, e é dali que sai o
+histórico do dono em `/admin/clientes` — quem comprou, o quê, quando, há quanto tempo não volta,
+aniversário.
 
-**E entra uma vez só.** A sessão é uma janela deslizante: cada visita empurra o vencimento 90
-dias para frente, então quem pede de vez em quando nunca mais vê tela de login — some só quem
-sumiu por 3 meses. O cookie vai no teto que o navegador aceita (400 dias) e quem manda no prazo
-é o banco, porque página renderizada no servidor não pode reescrever cookie. Melhor ainda: a
-confirmação no WhatsApp leva um **link mágico** — um toque e a pessoa está logada, sem digitar
-nada. Ele é conferido sem ser gasto ao abrir (o WhatsApp visita todo link para montar a
-pré-visualização) e só é consumido no clique do botão.
+Do lado do cliente, o histórico tem dois lugares: `/meus-pedidos`, que mostra os pedidos que
+aquele navegador guardou (por isso o `app/manifest.ts` — instalado na tela de início, o site
+ganha armazenamento próprio e o iPhone para de limpar os dados), e a **conversa de WhatsApp**,
+onde cada confirmação deixou o link do pedido.
 
-**Dá para instalar na tela de início.** O `app/manifest.ts` faz o site virar ícone no celular.
-Não é enfeite: o Safari do iPhone joga fora cookie e storage de site que a pessoa não abre há
-alguns dias, e junto vai a sessão. Instalado, o site ganha armazenamento próprio. Quem já entrou
-vê um convite discreto para fazer isso, com o passo a passo certo para iPhone e o botão nativo
-no Android.
+O que deliberadamente **não** existe é buscar pedido por telefone: quem soubesse o número de
+alguém veria o nome, o endereço de entrega e tudo que a pessoa já comprou. Isso só seria seguro
+com uma prova de posse do número — exatamente a burocracia que o sistema não quer ter.
 
 **RLS fechado por padrão.** A chave anônima só lê o cardápio. Pedidos, cupons e configurações
 são escritos por server actions com `service_role`, e cada uma delas chama `exigirAdmin()` —

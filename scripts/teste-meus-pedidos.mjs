@@ -1,17 +1,18 @@
 /**
- * Testa a tela "Meus pedidos" — o histórico do cliente sem conta e sem senha.
+ * Testa o histórico do cliente — que existe sem conta e sem senha.
  *
- * O que precisa ser verdade:
- *   1. quem fez um pedido vê o pedido, na hora, sem digitar nada;
- *   2. o status acompanha o que a cozinha está fazendo;
- *   3. um aparelho NUNCA vê o pedido de outra pessoa — é aí que mora o risco
- *      de vazar nome, telefone e endereço de quem comprou.
+ * Como funciona a decisão de negócio:
+ *   - o telefone é OBRIGATÓRIO no checkout: é ele que amarra o pedido à ficha
+ *     do cliente, e é assim que o dono tem o histórico dele;
+ *   - do lado do cliente, /meus-pedidos mostra o que ESTE navegador guardou,
+ *     e a conversa de WhatsApp guarda o link de cada pedido;
+ *   - um aparelho NUNCA vê o pedido de outra pessoa — é aí que moraria o
+ *     vazamento de nome, endereço e histórico de quem comprou.
  *
  * Uso:  node scripts/teste-meus-pedidos.mjs
  */
 import { chromium } from 'playwright'
 import { mkdir } from 'node:fs/promises'
-import { createHash } from 'node:crypto'
 import { env, EMAIL_ADMIN, SENHA_ADMIN } from './credenciais.mjs'
 
 const BASE = 'http://localhost:3000'
@@ -37,12 +38,12 @@ async function sql(query) {
 }
 
 // Painel limpo: com sobras de execuções anteriores o teste clica no card errado.
-await sql('delete from public.pedidos; delete from public.sessoes_cliente; delete from public.codigos_acesso;')
+await sql('delete from public.pedidos;')
 
 const navegador = await chromium.launch()
 
-// Contexto = aparelho. Dois contextos separados porque o localStorage é o que
-// separa um cliente do outro; compartilhar o contexto invalidaria o teste 3.
+// Contexto = aparelho. Contextos separados de propósito: é o localStorage que
+// separa um cliente do outro, e compartilhar invalidaria o teste 5.
 const celularDoCliente = await navegador.newContext({ viewport: { width: 420, height: 900 } })
 const pagina = await celularDoCliente.newPage()
 
@@ -63,10 +64,21 @@ try {
     await pagina.getByRole('link', { name: /Ver cardápio/ }).isVisible(),
     'oferece caminho de volta para o cardápio'
   )
+  // O "Acesso da equipe" do rodapé é do dono e continua existindo; o que não
+  // pode existir é login de CLIENTE.
+  conferir(
+    (await pagina.locator('a[href="/entrar"]').count()) === 0 &&
+      (await pagina.getByText(/Entrar com o WhatsApp|código de 6 dígitos/i).count()) === 0,
+    'não existe login de cliente em lugar nenhum'
+  )
+  conferir(
+    (await pagina.request.get(`${BASE}/entrar`)).status() === 404,
+    'a rota /entrar deixou de existir'
+  )
   await pagina.screenshot({ path: `${TIROS}/mp-01-vazio.png`, fullPage: true })
 
-  // ------------------------------------------- 2. faz um pedido
-  console.log('\n2) Cliente faz um pedido')
+  // ------------------------------------------- 2. telefone é obrigatório
+  console.log('\n2) O telefone é obrigatório no checkout')
   await pagina.goto(BASE, { waitUntil: 'networkidle' })
   await pagina.getByRole('button', { name: /é para viagem/i }).click()
   await pagina.waitForTimeout(1800)
@@ -82,8 +94,29 @@ try {
   await pagina.waitForURL('**/checkout')
   await pagina.waitForTimeout(600)
 
+  const campoTelefone = pagina.getByLabel('Telefone (WhatsApp)')
+  conferir(
+    await campoTelefone.evaluate((el) => el.required),
+    'campo de telefone é marcado como obrigatório'
+  )
+  conferir(
+    await pagina.getByText(/Obrigatório.*acha o seu pedido/s).isVisible(),
+    'a tela explica por que o telefone é pedido'
+  )
+
+  // sem telefone o navegador nem deixa enviar; com telefone curto, o servidor barra
   await pagina.getByLabel('Nome').fill('Cliente Historico')
-  await pagina.getByLabel('Telefone (WhatsApp)').fill('71988886666')
+  await campoTelefone.fill('7198')
+  await pagina.getByRole('button', { name: /Enviar pedido|Ir para o pagamento/ }).click()
+  await pagina.waitForTimeout(1800)
+  conferir(
+    pagina.url().includes('/checkout'),
+    'telefone incompleto não fecha pedido (o servidor recusa)'
+  )
+
+  // ------------------------------------------- 3. pedido de verdade
+  console.log('\n3) Pedido feito e amarrado ao telefone')
+  await campoTelefone.fill('71988886666')
   await pagina.getByRole('button', { name: /Enviar pedido|Ir para o pagamento/ }).click()
   await pagina.waitForURL('**/pedido/**', { timeout: 20000 })
   const pedidoId = pagina.url().split('/pedido/')[1].split('/')[0]
@@ -94,8 +127,21 @@ try {
   )
   conferir(guardados.includes(pedidoId), 'navegador guardou o id do pedido sozinho')
 
-  // ------------------------------------------- 3. o pedido aparece
-  console.log('\n3) Histórico no mesmo aparelho')
+  // é isto que dá o histórico ao DONO: ficha do cliente montada pelo gatilho
+  const ficha = await sql(`
+    select c.nome, c.telefone, c.total_pedidos
+    from public.clientes c
+    join public.pedidos p on p.cliente_id = c.id
+    where p.id = '${pedidoId}';`)
+  const linha = Array.isArray(ficha) ? ficha[0] : ficha?.[0]
+  conferir(
+    linha?.telefone === '71988886666',
+    `pedido vinculado à ficha do cliente pelo telefone (${linha?.telefone ?? 'nenhuma'})`
+  )
+  conferir(linha?.total_pedidos >= 1, `ficha já contabiliza ${linha?.total_pedidos} pedido(s)`)
+
+  // ------------------------------------------- 4. o pedido aparece
+  console.log('\n4) Histórico no mesmo aparelho')
   await pagina.goto(`${BASE}/meus-pedidos`, { waitUntil: 'networkidle' })
   await pagina.waitForTimeout(1500)
   conferir(await pagina.getByText('Em andamento').isVisible(), 'pedido entra como "Em andamento"')
@@ -116,8 +162,8 @@ try {
     'clicar na linha abre o acompanhamento em andamento'
   )
 
-  // ------------------------------------------- 4. cozinha mexe no status
-  console.log('\n4) Status muda na cozinha e reflete no histórico')
+  // ------------------------------------------- 5. status muda na cozinha
+  console.log('\n5) Status muda na cozinha e reflete no histórico')
   const painel = await navegador.newContext({ viewport: { width: 1280, height: 900 } })
   const paginaAdmin = await painel.newPage()
   await paginaAdmin.goto(`${BASE}/admin/login`, { waitUntil: 'networkidle' })
@@ -129,9 +175,16 @@ try {
   })
   await paginaAdmin.waitForTimeout(1200)
 
-  await sql(`update public.pedidos set status = 'pronto' where id = '${pedidoId}';`)
+  // o dono enxerga a pessoa por trás do pedido — este é o histórico dele
+  await paginaAdmin.goto(`${BASE}/admin/clientes`, { waitUntil: 'networkidle' })
+  await paginaAdmin.waitForTimeout(1200)
+  conferir(
+    await paginaAdmin.getByText('Cliente Historico').first().isVisible(),
+    'o dono vê o cliente na tela de clientes, sem ele ter feito cadastro'
+  )
   await painel.close()
 
+  await sql(`update public.pedidos set status = 'pronto' where id = '${pedidoId}';`)
   await pagina.goto(`${BASE}/meus-pedidos`, { waitUntil: 'networkidle' })
   await pagina.waitForTimeout(1500)
   conferir(
@@ -139,7 +192,6 @@ try {
     'histórico mostra o pedido já pronto'
   )
 
-  // e quando termina, sai de "em andamento" e vira histórico
   await sql(`update public.pedidos set status = 'retirado' where id = '${pedidoId}';`)
   await pagina.reload({ waitUntil: 'networkidle' })
   await pagina.waitForTimeout(1500)
@@ -153,8 +205,8 @@ try {
   )
   await pagina.screenshot({ path: `${TIROS}/mp-03-concluido.png`, fullPage: true })
 
-  // ------------------------------------------- 5. o teste que importa
-  console.log('\n5) Aparelho de outra pessoa NÃO vê este pedido')
+  // ------------------------------------------- 6. o teste que importa
+  console.log('\n6) Aparelho de outra pessoa NÃO vê este pedido')
   const outroCelular = await navegador.newContext({ viewport: { width: 420, height: 900 } })
   const estranho = await outroCelular.newPage()
   await estranho.goto(`${BASE}/meus-pedidos`, { waitUntil: 'networkidle' })
@@ -182,222 +234,8 @@ try {
   )
   await outroCelular.close()
 
-  // ------------------------------------------- 5b. login pelo WhatsApp
-  console.log('\n5b) Entrar com o WhatsApp em OUTRO aparelho')
-  const celularNovo = await navegador.newContext({ viewport: { width: 420, height: 900 } })
-  const outro = await celularNovo.newPage()
-
-  await outro.goto(`${BASE}/meus-pedidos`, { waitUntil: 'networkidle' })
-  await outro.waitForTimeout(1200)
-  conferir(
-    await outro.getByRole('link', { name: /Entrar com o WhatsApp/ }).isVisible(),
-    'aparelho novo recebe o convite para entrar'
-  )
-  await outro.screenshot({ path: `${TIROS}/mp-04-convite-login.png`, fullPage: true })
-
-  await outro.getByRole('link', { name: /Entrar com o WhatsApp/ }).click()
-  await outro.waitForURL('**/entrar')
-  await outro.waitForTimeout(600)
-
-  // telefone errado primeiro: o formulario tem que reclamar, nao aceitar
-  await outro.getByLabel('Seu WhatsApp').fill('123')
-  await outro.getByRole('button', { name: /Receber código/ }).click()
-  await outro.waitForTimeout(1500)
-  conferir(
-    await outro.getByText(/Confira o número/).isVisible(),
-    'número curto demais é recusado'
-  )
-
-  await outro.getByLabel('Seu WhatsApp').fill('71988886666')
-  await outro.getByRole('button', { name: /Receber código/ }).click()
-  await outro.waitForTimeout(2500)
-  conferir(
-    await outro.getByLabel(/Código de 6 dígitos/).isVisible(),
-    'tela pede o código de 6 dígitos'
-  )
-  await outro.screenshot({ path: `${TIROS}/mp-05-codigo.png`, fullPage: true })
-
-  // o codigo real: em demonstracao aparece na tela; senao, lemos do banco
-  let codigoReal = null
-  const naTela = await outro
-    .getByText(/Modo demonstração/)
-    .isVisible()
-    .catch(() => false)
-  if (naTela) {
-    const texto = await outro.getByText(/o código aparece aqui/).textContent()
-    codigoReal = texto?.match(/(\d{6})/)?.[1] ?? null
-    ok('modo demonstração mostra o código com aviso na tela')
-  }
-
-  // código errado não pode entrar
-  await outro.getByLabel(/Código de 6 dígitos/).fill(codigoReal === '000000' ? '111111' : '000000')
-  await outro.getByRole('button', { name: /Ver meus pedidos/ }).click()
-  await outro.waitForTimeout(2000)
-  conferir(
-    (await outro.getByText(/Código errado|Código expirado/).count()) > 0,
-    'código errado é recusado'
-  )
-  conferir(!outro.url().includes('/meus-pedidos'), 'código errado não deixa entrar')
-
-  if (codigoReal) {
-    await outro.getByLabel(/Código de 6 dígitos/).fill(codigoReal)
-    await outro.getByRole('button', { name: /Ver meus pedidos/ }).click()
-    await outro.waitForURL('**/meus-pedidos', { timeout: 20000 })
-    await outro.waitForTimeout(2000)
-
-    conferir(
-      await outro.getByText(/Entrou como|Entrou com/).isVisible(),
-      'entrou e a tela mostra de quem é a conta'
-    )
-    conferir(
-      await outro.getByText('Cocada baiana').first().isVisible(),
-      'histórico do WhatsApp aparece no aparelho novo, sem ter pedido nele'
-    )
-    await outro.screenshot({ path: `${TIROS}/mp-06-logado.png`, fullPage: true })
-
-    // o mesmo código não pode servir duas vezes
-    const terceiro = await navegador.newContext({ viewport: { width: 420, height: 900 } })
-    const reuso = await terceiro.newPage()
-    await reuso.goto(`${BASE}/entrar`, { waitUntil: 'networkidle' })
-    await reuso.getByLabel('Seu WhatsApp').fill('71988886666')
-    await reuso.getByRole('button', { name: /Receber código/ }).click()
-    await reuso.waitForTimeout(2000)
-    await reuso.getByLabel(/Código de 6 dígitos/).fill(codigoReal)
-    await reuso.getByRole('button', { name: /Ver meus pedidos/ }).click()
-    await reuso.waitForTimeout(2000)
-    conferir(
-      !reuso.url().includes('/meus-pedidos'),
-      'código já usado não entra de novo'
-    )
-    await terceiro.close()
-
-    // checkout ja vem preenchido para quem entrou
-    await outro.goto(BASE, { waitUntil: 'networkidle' })
-    await outro.getByRole('button', { name: /é para viagem/i }).click()
-    await outro.waitForTimeout(1500)
-    await outro.getByRole('button', { name: /Cocada baiana/ }).first().click()
-    await outro.waitForTimeout(400)
-    await outro.getByRole('button', { name: /^Adicionar/ }).click()
-    await outro.waitForTimeout(500)
-    await outro.goto(`${BASE}/checkout`, { waitUntil: 'networkidle' })
-    await outro.waitForTimeout(1200)
-    const nomePreenchido = await outro.getByLabel('Nome').inputValue()
-    conferir(
-      nomePreenchido === 'Cliente Historico',
-      `checkout já vem com o nome de quem entrou ("${nomePreenchido}")`
-    )
-
-    // ------------------------------------ continuar logado (o ponto do iFood)
-    console.log('\n5c) A sessão não pede senha de novo')
-    const biscoito = (await celularNovo.cookies()).find((c) => c.name === 'bv_cliente')
-    conferir(Boolean(biscoito), 'sessão vive num cookie')
-    conferir(biscoito?.httpOnly === true, 'cookie é httpOnly (JavaScript da página não lê)')
-    const diasDeCookie = (biscoito.expires * 1000 - Date.now()) / 86400000
-    conferir(
-      diasDeCookie > 300,
-      `cookie fica no aparelho por ${Math.round(diasDeCookie)} dias (não some ao fechar o navegador)`
-    )
-
-    // fechar e reabrir o navegador não pode deslogar
-    const paginaNova = await celularNovo.newPage()
-    await paginaNova.goto(`${BASE}/meus-pedidos`, { waitUntil: 'networkidle' })
-    await paginaNova.waitForTimeout(1500)
-    conferir(
-      await paginaNova.getByText(/Entrou como|Entrou com/).isVisible(),
-      'abrir de novo mais tarde continua logado'
-    )
-    await paginaNova.close()
-
-    // janela deslizante: quem usa nunca vence
-    const antes = await sql(
-      `select expira_em from public.sessoes_cliente order by criado_em desc limit 1;`
-    )
-    await sql(
-      `update public.sessoes_cliente set ultimo_acesso = now() - interval '2 days',
-       expira_em = now() + interval '30 days';`
-    )
-    await outro.goto(`${BASE}/meus-pedidos`, { waitUntil: 'networkidle' })
-    await outro.waitForTimeout(1800)
-    const depois = await sql(
-      `select expira_em from public.sessoes_cliente order by criado_em desc limit 1;`
-    )
-    const venceEm = (novo) =>
-      (new Date(novo?.[0]?.expira_em ?? 0).getTime() - Date.now()) / 86400000
-    conferir(
-      venceEm(depois) > 80,
-      `visitar empurra o vencimento de volta para ${Math.round(venceEm(depois))} dias`
-    )
-    void antes
-
-    // ------------------------------------ 5d. link mágico do WhatsApp
-    console.log('\n5d) Link mágico que vem na confirmação')
-    const tokenBom = 'token-de-teste-' + pedidoId.slice(0, 8)
-    const hashBom = createHash('sha256').update(tokenBom).digest('hex')
-    await sql(
-      `insert into public.codigos_acesso (telefone, tipo, codigo_hash, expira_em)
-       values ('71988886666', 'link', '${hashBom}', now() + interval '30 days');`
-    )
-
-    const celularDoLink = await navegador.newContext({ viewport: { width: 420, height: 900 } })
-    const comLink = await celularDoLink.newPage()
-
-    await comLink.goto(`${BASE}/entrar/link?t=naoexiste`, { waitUntil: 'networkidle' })
-    await comLink.waitForTimeout(600)
-    conferir(await comLink.getByText('Link vencido').isVisible(), 'token inventado não entra')
-
-    // o WhatsApp abre o link sozinho para montar a previa; isso NAO pode gastar
-    await comLink.goto(`${BASE}/entrar/link?t=${tokenBom}`, { waitUntil: 'networkidle' })
-    await comLink.waitForTimeout(600)
-    await comLink.goto(`${BASE}/entrar/link?t=${tokenBom}`, { waitUntil: 'networkidle' })
-    await comLink.waitForTimeout(600)
-    conferir(
-      await comLink.getByText('É você mesmo?').isVisible(),
-      'só abrir o link não gasta o token (robô de prévia não estraga)'
-    )
-    conferir(
-      await comLink.getByText(/\(71\) 98888-6666/).isVisible(),
-      'a tela diz de qual WhatsApp é a conta antes de entrar'
-    )
-    await comLink.screenshot({ path: `${TIROS}/mp-07-link-magico.png`, fullPage: true })
-
-    await comLink.getByRole('button', { name: /Sim, entrar/ }).click()
-    await comLink.waitForURL('**/meus-pedidos', { timeout: 20000 })
-    await comLink.waitForTimeout(1800)
-    conferir(
-      await comLink.getByText(/Entrou como|Entrou com/).isVisible(),
-      'um toque no link entra na conta, sem digitar nada'
-    )
-    conferir(
-      await comLink.getByText('Cocada baiana').first().isVisible(),
-      'histórico aparece direto pelo link'
-    )
-
-    await comLink.goto(`${BASE}/entrar/link?t=${tokenBom}`, { waitUntil: 'networkidle' })
-    await comLink.waitForTimeout(800)
-    conferir(
-      await comLink.getByText('Link vencido').isVisible(),
-      'link mágico serve uma vez só'
-    )
-    await celularDoLink.close()
-
-    // sair de verdade: a sessão morre no banco, não só no navegador
-    await outro.goto(`${BASE}/meus-pedidos`, { waitUntil: 'networkidle' })
-    await outro.waitForTimeout(1500)
-    await outro.getByRole('button', { name: 'Sair' }).click()
-    await outro.waitForTimeout(2000)
-    await outro.goto(`${BASE}/meus-pedidos`, { waitUntil: 'networkidle' })
-    await outro.waitForTimeout(1500)
-    conferir(
-      await outro.getByRole('link', { name: /Entrar com o WhatsApp/ }).isVisible(),
-      'depois de sair, volta a ser um aparelho anônimo'
-    )
-  } else {
-    falha('não consegui obter o código para concluir o login')
-  }
-  await celularNovo.close()
-
-  // ------------------------------------------- 6. como chegar na tela
-  console.log('\n6) Caminho até a tela')
+  // ------------------------------------------- 7. caminho até a tela
+  console.log('\n7) Caminho até a tela')
   await pagina.goto(BASE, { waitUntil: 'networkidle' })
   await pagina.waitForTimeout(800)
   conferir(

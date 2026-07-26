@@ -9,7 +9,6 @@ import {
   urlBase,
 } from "@/lib/mercadopago";
 import { criarClienteAdmin } from "@/lib/supabase/server";
-import { criarLinkDeAcesso } from "@/lib/cliente-sessao";
 import { avisarPedidoConfirmado } from "@/lib/whatsapp";
 import type { Pedido } from "@/lib/types";
 
@@ -105,12 +104,7 @@ export async function verificarPagamentoAction(
   try {
     const config = await buscarConfiguracoes();
     const base = await urlBase();
-    await avisarPedidoConfirmado(
-      pedido,
-      config.nome,
-      `${base}/pedido/${pedido.id}`,
-      await criarLinkDeAcesso(pedido.cliente_telefone),
-    );
+    await avisarPedidoConfirmado(pedido, config.nome, `${base}/pedido/${pedido.id}`);
   } catch (erro) {
     console.warn("[verificar] não consegui avisar no WhatsApp", erro);
   }

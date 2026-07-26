@@ -80,9 +80,7 @@ type DadosAviso = Pick<
 export async function avisarPedidoConfirmado(
   pedido: DadosAviso,
   nomeLoja: string,
-  urlAcompanhamento: string,
-  /** Link mágico: entra na conta sem digitar nada. Opcional de propósito. */
-  urlAcesso?: string | null
+  urlAcompanhamento: string
 ) {
   const entrega = pedido.tipo_entrega === 'entrega'
   const hora = horaCurta(pedido.retirada_prevista)
@@ -103,10 +101,10 @@ export async function avisarPedidoConfirmado(
     ``,
     `Acompanhe por aqui:`,
     urlAcompanhamento,
-    // Um toque e o cliente está logado, para sempre. Sem senha, sem cadastro.
-    ...(urlAcesso
-      ? ['', `Para ver seus pedidos quando quiser, é só tocar aqui:`, urlAcesso]
-      : []),
+    ``,
+    // A conversa do WhatsApp vira o arquivo do cliente: cada pedido deixa aqui
+    // o seu link, e é onde ele procura quando troca de celular.
+    `Guarde esta mensagem: é por ela que você acha seu pedido depois.`,
   ]
 
   return enviarTexto(pedido.cliente_telefone, linhas.filter((l) => l !== null).join('\n'))
@@ -135,14 +133,3 @@ export async function avisarMudancaDeStatus(
   return enviarTexto(pedido.cliente_telefone, texto)
 }
 
-/**
- * Código de acesso ao histórico. Diferente dos outros avisos, aqui a falha
- * IMPORTA: se não sair, a pessoa fica sem entrar, então quem chamou precisa
- * saber e mostrar um recado honesto na tela.
- */
-export async function enviarCodigoAcesso(telefone: string, codigoAcesso: string, nomeLoja: string) {
-  return enviarTexto(
-    telefone,
-    `*${nomeLoja}*\n\nSeu código de acesso é *${codigoAcesso}*.\n\nEle vale por 10 minutos e serve só para você ver os seus pedidos.\nSe não foi você que pediu, é só ignorar esta mensagem — e não passe este código para ninguém.`
-  )
-}

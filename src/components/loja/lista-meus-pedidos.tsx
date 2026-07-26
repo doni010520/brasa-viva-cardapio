@@ -2,15 +2,13 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, ChevronRight, Loader2, LogOut, MessageCircle, Phone } from 'lucide-react'
+import { ArrowLeft, ChevronRight, Loader2, MessageCircle, Phone } from 'lucide-react'
 import { buscarMeusPedidosAction } from '@/app/(loja)/meus-pedidos/acoes'
-import { sairAction } from '@/app/(loja)/entrar/acoes'
 import { DicaInstalar } from '@/components/loja/dica-instalar'
 import { Botao, Cartao, Selo, Vazio } from '@/components/ui'
-import { linkWhatsapp, mascaraTelefone, moeda } from '@/lib/format'
+import { linkWhatsapp, moeda } from '@/lib/format'
 import { dataHoraCurta } from '@/lib/tempo'
 import { ROTULO_TIPO_ENTREGA, rotuloStatus, type Pedido } from '@/lib/types'
-import type { SessaoCliente } from '@/lib/cliente-sessao'
 
 const CHAVE = 'cardapio:pedidos'
 
@@ -21,12 +19,10 @@ export function ListaMeusPedidos({
   whatsappLoja,
   telefoneLoja,
   nomeLoja,
-  sessao,
 }: {
   whatsappLoja: string | null
   telefoneLoja: string | null
   nomeLoja: string
-  sessao: SessaoCliente | null
 }) {
   const [pedidos, setPedidos] = useState<Pedido[] | null>(null)
 
@@ -55,7 +51,7 @@ export function ListaMeusPedidos({
       cancelado = true
       clearInterval(intervalo)
     }
-  }, [sessao])
+  }, [])
 
   if (pedidos === null) {
     return (
@@ -80,42 +76,15 @@ export function ListaMeusPedidos({
       </Link>
 
       <h1 className="text-2xl font-black tracking-tight text-tinta-900">Meus pedidos</h1>
-      {sessao ? (
-        <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-tinta-500">
-          <span>
-            {sessao.nome ? (
-              <>
-                Entrou como <strong className="text-tinta-700">{sessao.nome}</strong>
-              </>
-            ) : (
-              <>Entrou com {mascaraTelefone(sessao.telefone)}</>
-            )}
-          </span>
-          <form action={sairAction}>
-            <button
-              type="submit"
-              className="inline-flex items-center gap-1 font-medium text-tinta-500 underline underline-offset-2 hover:text-tinta-900"
-            >
-              <LogOut className="h-3.5 w-3.5" />
-              Sair
-            </button>
-          </form>
-        </div>
-      ) : (
-        <p className="mt-1 text-sm text-tinta-500">
-          Os pedidos feitos neste aparelho, sem precisar de senha.
-        </p>
-      )}
+      <p className="mt-1 text-sm text-tinta-500">
+        Seus pedidos neste aparelho. Sem cadastro, sem senha, sem nada para lembrar.
+      </p>
 
       {pedidos.length === 0 ? (
         <div className="mt-6">
           <Vazio
             titulo="Nenhum pedido por aqui"
-            descricao={
-              sessao
-                ? 'Ainda não há pedidos ligados a este WhatsApp.'
-                : 'Quando você fizer um pedido, ele aparece nesta tela.'
-            }
+            descricao="Quando você fizer um pedido, ele aparece nesta tela."
           >
             <Link href="/">
               <Botao>Ver cardápio</Botao>
@@ -148,55 +117,36 @@ export function ListaMeusPedidos({
         </>
       )}
 
-      {/* Sem login, a lista depende do que ESTE navegador guardou — trocou de
-          celular ou limpou os dados, sumiu. O login pelo WhatsApp resolve isso
-          sem inventar senha para ninguém decorar. */}
-      {!sessao && (
-        <Cartao className="border-marca/30 bg-marca/5 mt-6 p-4">
-          <h2 className="font-bold text-tinta-900">Quer ver todo o seu histórico?</h2>
-          <p className="mt-1 text-sm text-tinta-600">
-            Esta lista mostra só os pedidos feitos <strong>neste aparelho</strong>. Entre com o seu
-            WhatsApp e veja tudo que você já pediu, de qualquer celular. Sem senha: a gente manda um
-            código e pronto.
-          </p>
-          <Link href="/entrar" className="mt-3 inline-block">
-            <Botao className="h-11">
-              <MessageCircle className="h-4 w-4" />
-              Entrar com o WhatsApp
-            </Botao>
-          </Link>
-        </Cartao>
-      )}
-
-      {/* Só faz sentido para quem entrou: é quem tem sessão a perder se o
-          navegador do iPhone limpar os dados do site. */}
-      {sessao && <DicaInstalar />}
+      {/* Sem conta, esta lista é o que o navegador lembra — e é justamente por
+          isso que instalar na tela de início importa: o iPhone limpa os dados
+          de site que a pessoa não abre há dias. Só oferece a quem já pediu. */}
+      {pedidos.length > 0 && <DicaInstalar />}
 
       <Cartao className="mt-4 p-4">
         <h2 className="font-bold text-tinta-900">Não achou seu pedido?</h2>
         <p className="mt-1 text-sm text-tinta-500">
-          {sessao
-            ? 'Aqui aparece tudo que foi pedido com o seu WhatsApp. Se algum pedido saiu com outro número, fale com a gente que a gente acha.'
-            : 'O link de cada pedido também foi enviado para o seu WhatsApp quando confirmamos — ele está lá na sua conversa.'}
+          Esta lista mostra os pedidos feitos <strong>neste aparelho</strong>. Se você pediu de
+          outro celular ou limpou os dados do navegador, procure na sua conversa de WhatsApp com a{' '}
+          {nomeLoja}: o link de cada pedido foi enviado para lá quando confirmamos.
         </p>
         {whatsappLoja && (
           <a
-            href={linkWhatsapp(
-              whatsappLoja,
-              `Olá! Preciso de ajuda com um pedido na ${nomeLoja}.`
-            )}
+            href={linkWhatsapp(whatsappLoja, `Olá! Preciso de ajuda com um pedido na ${nomeLoja}.`)}
             target="_blank"
             rel="noreferrer"
             className="mt-3 inline-block"
           >
             <Botao variante="fantasma">
-              <Phone className="h-4 w-4" />
-              Falar com a {nomeLoja}
+              <MessageCircle className="h-4 w-4" />
+              Abrir a conversa no WhatsApp
             </Botao>
           </a>
         )}
         {!whatsappLoja && telefoneLoja && (
-          <p className="mt-2 text-sm text-tinta-600">Ligue para {telefoneLoja}.</p>
+          <p className="mt-3 flex items-center gap-2 text-sm text-tinta-600">
+            <Phone className="h-4 w-4 shrink-0" />
+            Ligue para {telefoneLoja}.
+          </p>
         )}
       </Cartao>
     </div>

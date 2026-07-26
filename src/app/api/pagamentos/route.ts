@@ -8,7 +8,6 @@ import {
   mercadoPagoConfigurado,
 } from "@/lib/mercadopago";
 import { criarClienteAdmin } from "@/lib/supabase/server";
-import { criarLinkDeAcesso } from "@/lib/cliente-sessao";
 import { avisarPedidoConfirmado } from "@/lib/whatsapp";
 import { urlBase } from "@/lib/mercadopago";
 import type { Pedido } from "@/lib/types";
@@ -164,12 +163,7 @@ export async function POST(request: NextRequest) {
 
     try {
       const base = await urlBase();
-      await avisarPedidoConfirmado(
-        pedido,
-        config.nome,
-        `${base}/pedido/${pedido.id}`,
-        await criarLinkDeAcesso(pedido.cliente_telefone),
-      );
+      await avisarPedidoConfirmado(pedido, config.nome, `${base}/pedido/${pedido.id}`);
     } catch (erro) {
       console.warn("[pagamentos] não consegui avisar no WhatsApp", erro);
     }

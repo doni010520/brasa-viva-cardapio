@@ -2,7 +2,6 @@ import Link from 'next/link'
 import { FormularioCheckout } from '@/components/loja/formulario-checkout'
 import { Botao, Vazio } from '@/components/ui'
 import { buscarBairros, buscarConfiguracoes, buscarHorarios } from '@/lib/dados'
-import { cadastroDoClienteLogado } from '@/lib/cliente-sessao'
 import { mercadoPagoConfigurado } from '@/lib/mercadopago'
 import { mesaAtual, modoAtual } from '@/lib/modo'
 import { estadoDaLoja, horariosDeRetirada } from '@/lib/tempo'
@@ -10,13 +9,12 @@ import { estadoDaLoja, horariosDeRetirada } from '@/lib/tempo'
 export const dynamic = 'force-dynamic'
 
 export default async function PaginaCheckout() {
-  const [config, horarios, bairros, modo, mesa, cadastro] = await Promise.all([
+  const [config, horarios, bairros, modo, mesa] = await Promise.all([
     buscarConfiguracoes(),
     buscarHorarios(),
     buscarBairros(),
     modoAtual(),
     mesaAtual(),
-    cadastroDoClienteLogado(),
   ])
   const loja = estadoDaLoja(config, horarios)
   const noLocal = modo === 'local' && config.aceita_consumo_local
@@ -49,16 +47,6 @@ export default async function PaginaCheckout() {
       tempoEntregaMin={config.tempo_entrega_min}
       entregaGratisAcimaCentavos={config.entrega_gratis_acima_centavos}
       horariosRetirada={horariosDeRetirada(config, horarios)}
-      cadastro={
-        cadastro
-          ? {
-              nome: cadastro.nome,
-              telefone: cadastro.telefone,
-              email: cadastro.email,
-              nascimento: cadastro.data_nascimento,
-            }
-          : null
-      }
     />
   )
 }

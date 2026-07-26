@@ -23,13 +23,6 @@ import type { Bairro, FormaPagamento, TipoEntrega } from '@/lib/types'
 
 const CHAVE_CLIENTE = 'cardapio:cliente:v1'
 
-export type CadastroConhecido = {
-  nome: string
-  telefone: string
-  email: string | null
-  nascimento: string | null
-}
-
 type DadosSalvos = {
   nome?: string
   telefone?: string
@@ -56,7 +49,6 @@ export function FormularioCheckout({
   tempoEntregaMin,
   entregaGratisAcimaCentavos,
   horariosRetirada,
-  cadastro,
 }: {
   noLocal: boolean
   mesa: string | null
@@ -72,21 +64,15 @@ export function FormularioCheckout({
   tempoEntregaMin: number
   entregaGratisAcimaCentavos: number | null
   horariosRetirada: OpcaoRetirada[]
-  /** Preenchido quando o cliente entrou com o WhatsApp: ele não digita nada. */
-  cadastro: CadastroConhecido | null
 }) {
   const router = useRouter()
   const { itens, carregado, subtotalCentavos, limpar } = useCarrinho()
   const [enviando, iniciarEnvio] = useTransition()
 
-  // Quem entrou com o WhatsApp já chega com os dados no lugar: o login serve
-  // para isso também, não só para ver histórico.
-  const [nome, setNome] = useState(cadastro?.nome ?? '')
-  const [telefone, setTelefone] = useState(
-    cadastro ? mascaraTelefone(cadastro.telefone) : ''
-  )
-  const [email, setEmail] = useState(cadastro?.email ?? '')
-  const [nascimento, setNascimento] = useState(cadastro?.nascimento ?? '')
+  const [nome, setNome] = useState('')
+  const [telefone, setTelefone] = useState('')
+  const [email, setEmail] = useState('')
+  const [nascimento, setNascimento] = useState('')
   const [observacoes, setObservacoes] = useState('')
   const [retirada, setRetirada] = useState(horariosRetirada[0]?.valor ?? '')
   const [formaPagamento, setFormaPagamento] = useState<FormaPagamento>(
@@ -116,11 +102,10 @@ export function FormularioCheckout({
       const salvo = localStorage.getItem(CHAVE_CLIENTE)
       if (!salvo) return
       const dados = JSON.parse(salvo) as DadosSalvos
-      // o cadastro da conta manda mais que o rascunho do navegador
-      if (dados.nome && !cadastro?.nome) setNome(dados.nome)
-      if (dados.telefone && !cadastro?.telefone) setTelefone(dados.telefone)
-      if (dados.email && !cadastro?.email) setEmail(dados.email)
-      if (dados.nascimento && !cadastro?.nascimento) setNascimento(dados.nascimento)
+      if (dados.nome) setNome(dados.nome)
+      if (dados.telefone) setTelefone(dados.telefone)
+      if (dados.email) setEmail(dados.email)
+      if (dados.nascimento) setNascimento(dados.nascimento)
       if (dados.enderecoRua) setEnderecoRua(dados.enderecoRua)
       if (dados.enderecoNumero) setEnderecoNumero(dados.enderecoNumero)
       if (dados.enderecoComplemento) setEnderecoComplemento(dados.enderecoComplemento)
@@ -130,7 +115,7 @@ export function FormularioCheckout({
     } catch {
       // sem drama: o cliente digita de novo
     }
-  }, [bairros, cadastro])
+  }, [bairros])
 
   // Trocou para entrega com "pagar na retirada" marcado? Passa para online,
   // senão o cliente só descobriria o problema ao tentar enviar.
@@ -345,7 +330,8 @@ export function FormularioCheckout({
               autoComplete="tel"
             />
             <p className="mt-1 text-xs text-tinta-400">
-              A gente avisa por aqui quando o pedido estiver pronto.
+              Obrigatório: é por ele que a gente avisa quando ficar pronto e acha o seu pedido
+              depois.
             </p>
           </div>
 

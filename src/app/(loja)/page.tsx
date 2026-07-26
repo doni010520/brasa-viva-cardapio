@@ -30,7 +30,7 @@ export default async function PaginaCardapio() {
       <EscolhaModo
         nomeLoja={config.nome}
         descricao={config.descricao}
-        fachadaUrl={config.foto_fachada_url ?? '/fachada.webp'}
+        fachadaUrl={config.foto_fachada_url ?? '/fachada-fundo.webp'}
         aceitaLocal={config.aceita_consumo_local}
         aceitaRetirada={config.aceita_retirada}
         aceitaEntrega={config.aceita_entrega}

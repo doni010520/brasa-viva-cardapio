@@ -9,7 +9,6 @@ import { criarClienteAdmin } from "@/lib/supabase/server";
 import { estadoDaLoja } from "@/lib/tempo";
 import { mesaAtual } from "@/lib/modo";
 import { apenasDigitos } from "@/lib/format";
-import { criarLinkDeAcesso } from "@/lib/cliente-sessao";
 import { avisarPedidoConfirmado } from "@/lib/whatsapp";
 import type { Bairro } from "@/lib/types";
 
@@ -283,12 +282,7 @@ export async function criarPedidoAction(
 
     const base = await urlBase();
     // aviso é bônus: se o WhatsApp falhar, o pedido continua valendo
-    await avisarPedidoConfirmado(
-      pedido,
-      config.nome,
-      `${base}/pedido/${pedido.id}`,
-      await criarLinkDeAcesso(pedido.cliente_telefone),
-    );
+    await avisarPedidoConfirmado(pedido, config.nome, `${base}/pedido/${pedido.id}`);
 
     return {
       ok: true,
