@@ -7,14 +7,18 @@
  * robô — é que o pedido chegue certo na cozinha e que ele não consiga
  * inventar preço, prato ou forma de pagamento proibida.
  *
- * Sobe um servidor Anthropic falso e uma instância do app apontada para ele.
+ * Sobe um servidor de modelo falso e uma instância do app apontada para ele.
+ * O MESMO roteiro roda nos dois provedores — o cliente do restaurante não
+ * pode receber atendimento diferente por causa de qual chave o dono usou.
  *
- * Uso:  npm run build && node scripts/teste-agente.mjs
+ * Uso:  npm run build && node scripts/teste-agente.mjs [anthropic|openai]
  */
 import { createServer } from 'node:http'
-import { spawn } from 'node:child_process'
+import { spawn, execSync } from 'node:child_process'
+import { connect } from 'node:net'
 import { env } from './credenciais.mjs'
 
+const PROVEDOR = process.argv[2] === 'openai' ? 'openai' : 'anthropic'
 const PORTA_MODELO = 4999
 const PORTA_APP = 3131
 const APP = `http://localhost:${PORTA_APP}`
@@ -41,33 +45,68 @@ async function sql(query) {
 
 // ------------------------------------------------------- modelo de mentira
 /**
- * Devolve, em ordem, o que foi posto na fila. Cada item vira uma resposta no
- * formato da API da Anthropic. O prompt recebido fica guardado para o teste
- * poder conferir o que o agente contou ao modelo.
+ * Devolve, em ordem, o que foi posto na fila, no formato do provedor da vez.
+ * O prompt recebido fica guardado para o teste poder conferir o que o agente
+ * contou ao modelo.
  */
 const fila = []
 const prompts = []
+
+/** O prompt de sistema vem em campo próprio na Anthropic e como primeira
+ *  mensagem na OpenAI. O teste olha para os dois pelo mesmo nome. */
+function sistemaDoCorpo(corpo) {
+  if (corpo.system) return corpo.system
+  const primeira = corpo.messages?.[0]
+  return primeira?.role === 'system' ? primeira.content : ''
+}
 
 const servidorModelo = createServer((req, res) => {
   let corpo = ''
   req.on('data', (p) => (corpo += p))
   req.on('end', () => {
-    prompts.push(JSON.parse(corpo || '{}'))
+    const recebido = JSON.parse(corpo || '{}')
+    prompts.push({ ...recebido, system: sistemaDoCorpo(recebido) })
     const proximo = fila.shift() ?? { texto: 'Certo!' }
 
-    const content = []
-    if (proximo.texto) content.push({ type: 'text', text: proximo.texto })
-    if (proximo.ferramenta) {
-      content.push({
-        type: 'tool_use',
-        id: `tool_${content.length}`,
-        name: proximo.ferramenta,
-        input: proximo.argumentos ?? {},
-      })
+    let resposta
+    if (PROVEDOR === 'openai') {
+      resposta = {
+        choices: [
+          {
+            message: {
+              content: proximo.texto ?? null,
+              tool_calls: proximo.ferramenta
+                ? [
+                    {
+                      id: 'call_1',
+                      type: 'function',
+                      function: {
+                        name: proximo.ferramenta,
+                        arguments: JSON.stringify(proximo.argumentos ?? {}),
+                      },
+                    },
+                  ]
+                : undefined,
+            },
+          },
+        ],
+      }
+    } else {
+      const content = []
+      if (proximo.texto) content.push({ type: 'text', text: proximo.texto })
+      if (proximo.ferramenta) {
+        content.push({
+          type: 'tool_use',
+          id: `tool_${content.length}`,
+          name: proximo.ferramenta,
+          input: proximo.argumentos ?? {},
+        })
+      }
+      resposta = { content }
     }
 
     res.writeHead(200, { 'content-type': 'application/json' })
-    res.end(JSON.stringify({ content }))
+    res.end(JSON.stringify(resposta))
   })
 })
 
@@ -86,6 +125,36 @@ async function mandarMensagem(texto, extras = {}) {
       },
     }),
   })
+}
+
+/**
+ * Porta ocupada é armadilha: o teste passaria a conversar com um servidor
+ * antigo, de outra rodada, e daria resultado sem valer nada. Melhor parar.
+ */
+function portaLivre(porta) {
+  return new Promise((resolve) => {
+    const soquete = connect({ port: porta, host: '127.0.0.1' })
+    soquete.on('connect', () => (soquete.destroy(), resolve(false)))
+    soquete.on('error', () => resolve(true))
+    setTimeout(() => (soquete.destroy(), resolve(true)), 1500)
+  })
+}
+
+/**
+ * No Windows, spawn com shell cria cmd.exe no meio: matar o filho deixa o
+ * `next start` vivo segurando a porta. Aqui derruba a árvore toda.
+ */
+function derrubar(processo) {
+  if (!processo?.pid) return
+  try {
+    if (process.platform === 'win32') {
+      execSync(`taskkill /F /T /PID ${processo.pid}`, { stdio: 'ignore' })
+    } else {
+      process.kill(-processo.pid)
+    }
+  } catch {
+    processo.kill()
+  }
 }
 
 async function esperarApp() {
@@ -119,6 +188,17 @@ const bairro = bairros[0]
 
 console.log(`\nProduto de teste: ${produto.nome} (${(produto.preco / 100).toFixed(2)})`)
 
+for (const porta of [PORTA_MODELO, PORTA_APP]) {
+  if (!(await portaLivre(porta))) {
+    console.error(
+      `
+A porta ${porta} já está ocupada — provavelmente sobrou servidor de uma rodada ` +
+        `anterior. Feche-o antes, senão o teste conversa com o servidor errado.`
+    )
+    process.exit(1)
+  }
+}
+
 await new Promise((r) => servidorModelo.listen(PORTA_MODELO, r))
 
 const app = spawn('npx', ['next', 'start', '-p', String(PORTA_APP)], {
@@ -126,8 +206,11 @@ const app = spawn('npx', ['next', 'start', '-p', String(PORTA_APP)], {
   shell: true,
   env: {
     ...process.env,
-    ANTHROPIC_API_KEY: 'chave-de-mentira',
+    // uma chave só: modeloPadrao() escolhe o provedor pela que existir
+    ANTHROPIC_API_KEY: PROVEDOR === 'anthropic' ? 'chave-de-mentira' : '',
     ANTHROPIC_BASE_URL: `http://localhost:${PORTA_MODELO}`,
+    OPENAI_API_KEY: PROVEDOR === 'openai' ? 'chave-de-mentira' : '',
+    OPENAI_BASE_URL: `http://localhost:${PORTA_MODELO}`,
     AGENTE_MODELO: 'modelo-de-mentira',
     WHATSAPP_WEBHOOK_TOKEN: TOKEN,
     // uazapi fica de fora: o teste não manda mensagem para ninguém de verdade
@@ -334,7 +417,7 @@ try {
 } catch (erro) {
   falha(`quebrou no meio: ${erro.message}`)
 } finally {
-  app.kill()
+  derrubar(app)
   servidorModelo.close()
   await sql('update public.configuracoes set agente_whatsapp_ativo = false where id = 1;')
 }
