@@ -60,6 +60,9 @@ export type Configuracoes = {
   agente_whatsapp_ativo: boolean
   agente_nome: string | null
   agente_instrucoes: string | null
+  /** Aceita {nome}, {loja}, {link} e {cupom}. */
+  mensagem_aniversario: string | null
+  cupom_aniversario: string | null
   antecedencia_min: number
   pedido_minimo_centavos: number
   aceita_pagamento_online: boolean

@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import { PainelAgente } from '@/components/admin/painel-agente'
-import { modeloConfigurado } from '@/lib/agente/modelo'
+import { temIA } from '@/lib/agente/modelo'
 import { buscarConfiguracoes } from '@/lib/dados'
 import { criarClienteAdmin, usuarioAdminAtual } from '@/lib/supabase/server'
 import { whatsappConfigurado } from '@/lib/whatsapp'
@@ -12,7 +12,6 @@ export type ConversaResumo = {
   telefone: string
   nome: string | null
   mensagens: { papel: 'cliente' | 'agente'; texto: string }[]
-  carrinho: unknown[]
   humano_assumiu: boolean
   ultimo_pedido_id: string | null
   atualizado_em: string
@@ -28,7 +27,7 @@ export default async function PaginaWhatsapp() {
 
   const { data } = await criarClienteAdmin()
     .from('conversas_whatsapp')
-    .select('id, telefone, nome, mensagens, carrinho, humano_assumiu, ultimo_pedido_id, atualizado_em')
+    .select('id, telefone, nome, mensagens, humano_assumiu, ultimo_pedido_id, atualizado_em')
     .order('atualizado_em', { ascending: false })
     .limit(50)
 
@@ -39,7 +38,8 @@ export default async function PaginaWhatsapp() {
       <div className="mb-5">
         <h1 className="text-2xl font-black tracking-tight text-tinta-900">Atendimento por WhatsApp</h1>
         <p className="text-sm text-tinta-500">
-          O robô conversa, monta o pedido e manda para a cozinha. Você assume quando quiser.
+          O robô tira dúvida, dá notícia do pedido e leva o cliente para o site. Pedido é sempre
+          fechado por lá.
         </p>
       </div>
 
@@ -47,7 +47,10 @@ export default async function PaginaWhatsapp() {
         ativo={config.agente_whatsapp_ativo}
         nome={config.agente_nome ?? 'Brasinha'}
         instrucoes={config.agente_instrucoes ?? ''}
-        temModelo={modeloConfigurado()}
+        mensagemAniversario={config.mensagem_aniversario ?? ''}
+        cupomAniversario={config.cupom_aniversario ?? ''}
+        urlTarefas={base ? `${base}/api/tarefas/diarias` : null}
+        temIA={temIA()}
         temWhatsapp={whatsappConfigurado()}
         urlWebhook={base ? `${base}/api/whatsapp/webhook` : null}
         conversas={(data ?? []) as ConversaResumo[]}

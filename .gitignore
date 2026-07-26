@@ -43,3 +43,4 @@ next-env.d.ts
 
 # saidas dos testes locais
 /.testes/
+agente-impressao/.env

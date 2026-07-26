@@ -1,6 +1,6 @@
 import type { NextRequest } from 'next/server'
 import { atender, normalizarTelefone } from '@/lib/agente'
-import { modeloConfigurado } from '@/lib/agente/modelo'
+import { temIA } from '@/lib/agente/modelo'
 import { buscarConfiguracoes } from '@/lib/dados'
 import { criarClienteAdmin } from '@/lib/supabase/server'
 import { enviarTexto } from '@/lib/whatsapp'
@@ -90,11 +90,6 @@ export async function POST(request: NextRequest) {
   if (!config.agente_whatsapp_ativo) {
     return Response.json({ ignorado: 'agente desligado no painel' })
   }
-  if (!modeloConfigurado()) {
-    console.warn('[agente] chave do modelo ausente; mensagem não respondida')
-    return Response.json({ ignorado: 'modelo não configurado' })
-  }
-
   if (!evento.texto) {
     // Áudio, foto e figurinha ainda não são lidos. Melhor dizer isso do que
     // ficar mudo e o cliente achar que ninguém viu.
@@ -153,6 +148,6 @@ export async function GET(request: NextRequest) {
   return Response.json({
     ok: true,
     agente_ativo: config.agente_whatsapp_ativo,
-    modelo_configurado: modeloConfigurado(),
+    com_ia: temIA(),
   })
 }

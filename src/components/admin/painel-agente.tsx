@@ -30,7 +30,10 @@ export function PainelAgente({
   ativo: ativoInicial,
   nome: nomeInicial,
   instrucoes: instrucoesInicial,
-  temModelo,
+  mensagemAniversario: aniversarioInicial,
+  cupomAniversario: cupomInicial,
+  urlTarefas,
+  temIA,
   temWhatsapp,
   urlWebhook,
   conversas,
@@ -38,7 +41,10 @@ export function PainelAgente({
   ativo: boolean
   nome: string
   instrucoes: string
-  temModelo: boolean
+  mensagemAniversario: string
+  cupomAniversario: string
+  urlTarefas: string | null
+  temIA: boolean
   temWhatsapp: boolean
   urlWebhook: string | null
   conversas: ConversaResumo[]
@@ -46,6 +52,8 @@ export function PainelAgente({
   const [ativo, setAtivo] = useState(ativoInicial)
   const [nome, setNome] = useState(nomeInicial)
   const [instrucoes, setInstrucoes] = useState(instrucoesInicial)
+  const [aniversario, setAniversario] = useState(aniversarioInicial)
+  const [cupom, setCupom] = useState(cupomInicial)
   const [aviso, setAviso] = useState<string | null>(null)
   const [salvando, salvar] = useTransition()
 
@@ -54,7 +62,13 @@ export function PainelAgente({
   function aoSalvar() {
     setAviso(null)
     salvar(async () => {
-      const r = await salvarAgenteAction({ ativo, nome, instrucoes })
+      const r = await salvarAgenteAction({
+        ativo,
+        nome,
+        instrucoes,
+        mensagemAniversario: aniversario,
+        cupomAniversario: cupom,
+      })
       if (!r.ok) {
         setAviso(r.erro)
         setAtivo(ativoInicial)
@@ -64,32 +78,68 @@ export function PainelAgente({
 
   return (
     <div className="space-y-4">
-      {/* O que falta para funcionar, dito antes de tudo: ligar o robô sem
-          modelo ou sem WhatsApp conectado é deixar o cliente no vácuo. */}
-      {(!temModelo || !temWhatsapp) && (
+      {/* Sem WhatsApp conectado nada disso sai do lugar — é a única peça que
+          realmente falta. A IA é opcional e tem aviso próprio, mais abaixo. */}
+      {!temWhatsapp && (
         <Cartao className="border-amber-300 bg-amber-50 p-4">
           <div className="flex gap-2.5 text-amber-900">
             <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" />
             <div className="text-sm">
-              <p className="font-bold">Ainda falta ligar uma peça</p>
-              <ul className="mt-1 space-y-0.5">
-                {!temModelo && (
-                  <li>
-                    Sem chave de IA no servidor: preencha <code>ANTHROPIC_API_KEY</code> ou{' '}
-                    <code>OPENAI_API_KEY</code>.
-                  </li>
-                )}
-                {!temWhatsapp && (
-                  <li>
-                    Sem WhatsApp conectado: preencha <code>UAZAPI_URL</code> e{' '}
-                    <code>UAZAPI_TOKEN</code>.
-                  </li>
-                )}
-              </ul>
+              <p className="font-bold">O WhatsApp da loja ainda não está conectado</p>
+              <p className="mt-0.5">
+                Preencha <code>UAZAPI_URL</code> e <code>UAZAPI_TOKEN</code> no servidor. Sem isso
+                nenhuma mensagem chega nem sai.
+              </p>
             </div>
           </div>
         </Cartao>
       )}
+
+      <Cartao className="p-4">
+        <h2 className="font-bold text-tinta-900">O que o robô faz</h2>
+        <div className="mt-2 grid gap-3 text-sm sm:grid-cols-2">
+          <div>
+            <p className="font-semibold text-emerald-700">Faz</p>
+            <ul className="mt-1 space-y-0.5 text-tinta-600">
+              <li>Responde cardápio, preço, horário e área de entrega</li>
+              <li>Diz em que pé está o pedido do cliente</li>
+              <li>Manda o link do site para pedir</li>
+              <li>Chama a equipe quando o assunto é sério</li>
+            </ul>
+          </div>
+          <div>
+            <p className="text-marca-700 font-semibold">Não faz</p>
+            <ul className="mt-1 space-y-0.5 text-tinta-600">
+              <li>Anotar pedido pelo WhatsApp</li>
+              <li>Combinar preço, desconto ou taxa</li>
+              <li>Aceitar pagamento</li>
+            </ul>
+            <p className="mt-1.5 text-xs text-tinta-400">
+              Pedido é sempre pelo site: é lá que o cliente confere tudo antes de confirmar.
+            </p>
+          </div>
+        </div>
+
+        <div
+          className={`mt-3 rounded-xl border p-3 text-sm ${
+            temIA ? 'border-emerald-200 bg-emerald-50' : 'border-tinta-200 bg-tinta-50'
+          }`}
+        >
+          {temIA ? (
+            <p className="text-tinta-700">
+              <strong>Respondendo com IA.</strong> Ele entende pergunta escrita de qualquer jeito e
+              conversa mais solto.
+            </p>
+          ) : (
+            <p className="text-tinta-700">
+              <strong>Respondendo sem IA</strong>, por palavra-chave (cardápio, entrega, horário,
+              meu pedido, atendente). Funciona, é instantâneo e não custa nada. Para ele entender
+              pergunta escrita de qualquer jeito, preencha <code>OPENAI_API_KEY</code> ou{' '}
+              <code>ANTHROPIC_API_KEY</code> no servidor.
+            </p>
+          )}
+        </div>
+      </Cartao>
 
       <Cartao className="p-4">
         <label className="flex items-start gap-3">
@@ -130,9 +180,47 @@ export function PainelAgente({
             placeholder="Ex.: fale como baiano, chame de meu rei, ofereça a cocada de sobremesa..."
           />
           <p className="mt-1 text-xs text-tinta-400">
-            Preço, cardápio, taxa de entrega e horário o robô já pega do sistema sozinho — não
-            precisa escrever aqui, e escrever pode fazer ele falar valor errado.
+            {temIA
+              ? 'Preço, cardápio, taxa de entrega e horário o robô já pega do sistema sozinho — não precisa escrever aqui, e escrever pode fazer ele falar valor errado.'
+              : 'Só tem efeito com IA ligada. Sem ela, as respostas são as fixas.'}
           </p>
+        </div>
+
+        <div className="mt-5 border-t border-tinta-200 pt-4">
+          <h3 className="font-bold text-tinta-900">Parabéns de aniversário</h3>
+          <p className="mt-0.5 text-sm text-tinta-500">
+            Vai só para quem informou a data no pedido e aceita receber promoção. Uma vez por ano,
+            por pessoa.
+          </p>
+
+          <div className="mt-3">
+            <Rotulo htmlFor="msg-aniversario">Mensagem</Rotulo>
+            <AreaTexto
+              id="msg-aniversario"
+              rows={3}
+              value={aniversario}
+              onChange={(e) => setAniversario(e.target.value)}
+              maxLength={1000}
+            />
+            <p className="mt-1 text-xs text-tinta-400">
+              Use <code>{'{nome}'}</code>, <code>{'{loja}'}</code>, <code>{'{link}'}</code> e{' '}
+              <code>{'{cupom}'}</code> — o sistema troca na hora de enviar.
+            </p>
+          </div>
+
+          <div className="mt-3 max-w-xs">
+            <Rotulo htmlFor="cupom-aniversario">Cupom de presente (opcional)</Rotulo>
+            <Campo
+              id="cupom-aniversario"
+              value={cupom}
+              onChange={(e) => setCupom(e.target.value.toUpperCase())}
+              maxLength={30}
+              placeholder="ANIVERSARIO10"
+            />
+            <p className="mt-1 text-xs text-tinta-400">
+              Precisa existir na tela de Cupons para valer no site.
+            </p>
+          </div>
         </div>
 
         {aviso && (
@@ -146,7 +234,7 @@ export function PainelAgente({
             {salvando && <Loader2 className="h-4 w-4 animate-spin" />}
             Salvar
           </Botao>
-          {ativo && temModelo && temWhatsapp && (
+          {ativo && temWhatsapp && (
             <Selo tom="verde">
               <Check className="h-3.5 w-3.5" />
               No ar
@@ -165,10 +253,23 @@ export function PainelAgente({
           <code className="mt-2 block overflow-x-auto rounded-xl bg-tinta-100 px-3 py-2 text-xs text-tinta-700">
             {urlWebhook}
           </code>
+
+          {urlTarefas && (
+            <>
+              <h2 className="mt-4 font-bold text-tinta-900">Parabéns automáticos</h2>
+              <p className="mt-1 text-sm text-tinta-500">
+                Chame este endereço uma vez por dia, de manhã, num agendador (cron). Chamar de novo
+                no mesmo dia não manda mensagem repetida.
+              </p>
+              <code className="mt-2 block overflow-x-auto rounded-xl bg-tinta-100 px-3 py-2 text-xs text-tinta-700">
+                {urlTarefas}
+              </code>
+            </>
+          )}
         </Cartao>
       )}
 
-      <ExperimentarAgente habilitado={temModelo} />
+      <ExperimentarAgente habilitado />
 
       <div>
         <h2 className="mb-2 text-sm font-bold text-tinta-500">Conversas</h2>
@@ -337,8 +438,8 @@ function ExperimentarAgente({ habilitado }: { habilitado: boolean }) {
         Experimentar
       </h2>
       <p className="mt-1 text-sm text-tinta-500">
-        Converse com o robô aqui como se fosse um cliente. Nada é enviado pelo WhatsApp — mas se
-        você mandar ele fechar um pedido, o pedido entra de verdade na cozinha.
+        Converse com o robô aqui como se fosse um cliente. Nada é enviado pelo WhatsApp e nenhum
+        pedido é criado — ele não fecha pedido nem aqui nem lá.
       </p>
 
       {linhas.length > 0 && (
@@ -364,7 +465,7 @@ function ExperimentarAgente({ habilitado }: { habilitado: boolean }) {
             if (e.key === 'Enter') mandar()
           }}
           disabled={!habilitado}
-          placeholder={habilitado ? 'Oi, queria uma marmita...' : 'Falta a chave de IA'}
+          placeholder="Oi, queria uma marmita..." 
         />
         <Botao onClick={mandar} disabled={!habilitado || ocupado || !texto.trim()}>
           {ocupado ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}

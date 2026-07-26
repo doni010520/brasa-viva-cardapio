@@ -1,35 +1,34 @@
-import { buscarConfiguracoes, buscarHorarios } from '@/lib/dados'
-import { mercadoPagoConfigurado } from '@/lib/mercadopago'
+import { buscarBairros, buscarConfiguracoes, buscarHorarios } from '@/lib/dados'
 import { estadoDaLoja } from '@/lib/tempo'
 import { moeda } from '@/lib/format'
-import {
-  FERRAMENTAS,
-  bairrosEmTexto,
-  cardapioEmTexto,
-  executar,
-  resumoDoCarrinho,
-} from './ferramentas'
+import { FERRAMENTAS, bairrosEmTexto, cardapioEmTexto, executar } from './ferramentas'
 import { abrirConversa, anexarMensagem, salvarConversa, type Conversa } from './estado'
-import { modeloPadrao, type Modelo, type Turno } from './modelo'
+import { modeloDeIA, type Modelo, type Turno } from './modelo'
+import { modeloSimples } from './modelo-simples'
 
 /**
  * O atendimento pelo WhatsApp.
  *
- * Divisão de trabalho: o modelo conversa e escolhe o que fazer; o sistema
- * confere e faz. Ele nunca soma, nunca decide taxa, nunca grava pedido — só
- * chama ferramenta. Se ele alucinar um prato, o pior que acontece é a
- * ferramenta recusar e ele ter que se explicar ao cliente.
+ * Não é um agente que faz coisas: é um chatbot que direciona para o site.
+ * Pedido é sempre lá — é onde o preço é conferido, o pagamento acontece e o
+ * cliente vê o que está levando antes de confirmar. Aqui ele tira dúvida, dá
+ * notícia de pedido em andamento e manda o link.
+ *
+ * A IA é OPCIONAL. Sem chave de API, um punhado de regras responde o básico
+ * na hora, de graça e sem alucinar (modelo-simples.ts). Com chave, a conversa
+ * fica mais solta e ele entende pergunta torta. O sistema funciona inteiro
+ * dos dois jeitos.
  */
 
 /** Trava contra laço infinito de ferramentas numa mesma mensagem. */
-const MAX_RODADAS = 6
+const MAX_RODADAS = 4
 
 export type Atendimento = { respostas: string[]; conversa: Conversa }
 
 export async function atender(
   telefoneNormalizado: string,
   textoDoCliente: string,
-  modelo: Modelo | null = modeloPadrao()
+  modeloEscolhido?: Modelo
 ): Promise<Atendimento> {
   const conversa = await abrirConversa(telefoneNormalizado)
 
@@ -42,13 +41,7 @@ export async function atender(
     return { respostas: [], conversa }
   }
 
-  if (!modelo) {
-    return {
-      respostas: [],
-      conversa,
-    }
-  }
-
+  const modelo = modeloEscolhido ?? modeloDeIA() ?? modeloSimples(await contextoSimples(conversa))
   const sistema = await montarPrompt(conversa)
 
   const turnos: Turno[] = [
@@ -100,70 +93,89 @@ export async function atender(
 /**
  * O que o agente sabe antes de abrir a boca.
  *
- * Tudo aqui é lido do banco a cada mensagem: cardápio, preço, horário e o
- * carrinho de agora. Nada fica "decorado" entre uma conversa e outra — se o
- * dono esgotar um prato no painel, a próxima resposta já sai certa.
+ * Tudo aqui é lido do banco a cada mensagem: cardápio, preço e horário. Nada
+ * fica "decorado" entre uma conversa e outra — se o dono esgotar um prato no
+ * painel, a próxima resposta já sai certa.
  */
 async function montarPrompt(conversa: Conversa): Promise<string> {
   const [config, horarios] = await Promise.all([buscarConfiguracoes(), buscarHorarios()])
   const loja = estadoDaLoja(config, horarios)
 
-  // Quem pede pelo WhatsApp está fora do salão: buffet livre não entra.
-  const [cardapio, bairros, carrinho] = await Promise.all([
-    cardapioEmTexto(true),
-    bairrosEmTexto(),
-    resumoDoCarrinho(conversa),
-  ])
+  // Quem fala pelo WhatsApp está fora do salão: buffet livre não entra.
+  const [cardapio, bairros] = await Promise.all([cardapioEmTexto(true), bairrosEmTexto()])
 
-  const podePagarOnline = config.aceita_pagamento_online && mercadoPagoConfigurado()
+  const link = process.env.NEXT_PUBLIC_URL_BASE?.replace(/\/$/, '') ?? ''
 
   const regras = [
     `Você é ${config.agente_nome ?? 'o atendente'}, atendente virtual da ${config.nome} no WhatsApp.`,
     config.agente_instrucoes ?? '',
     '',
+    'SUA FUNÇÃO',
+    '- Tirar dúvida sobre cardápio, preço, horário e área de entrega.',
+    '- Dar notícia de pedido em andamento (ferramenta status_do_pedido).',
+    `- Levar quem quer pedir para o site: ${link || '(link do site)'}`,
+    '',
+    'VOCÊ NÃO ANOTA PEDIDO. NUNCA.',
+    '- Não existe "anotei", "vou passar para a cozinha" nem "seu pedido é o número tal".',
+    '- Se a pessoa listar o que quer, tudo bem responder o que é e quanto custa —',
+    '  mas termine mandando o link para ela fechar por lá.',
+    '- O motivo é bom e pode ser dito: no site ela confere tudo, escolhe como pagar',
+    '  e recebe o comprovante. É o que evita pedido trocado.',
+    '- Se insistir muito em fechar por aqui, chame um atendente.',
+    '',
     'COMO FALAR',
     '- Mensagem de WhatsApp: curta, sem parágrafo enorme, sem markdown de título.',
     '- Uma pergunta por vez. Não despeje o cardápio inteiro; sugira o que combina.',
     '- Nunca invente prato, preço, taxa ou prazo. Se não está aqui embaixo, não existe.',
-    '- Nunca repita id de produto para o cliente: id é coisa nossa.',
     '',
-    'COMO FECHAR UM PEDIDO',
-    '1. Monte o carrinho com adicionar_item.',
-    '2. Confirme com o cliente o que tem no carrinho e o total.',
-    '3. Pergunte o nome (definir_nome) se ainda não souber.',
-    '4. Pergunte se é retirada ou entrega (definir_entrega). Para entrega, precisa de bairro, rua e número.',
-    '5. Só então chame fechar_pedido.',
-    '- Depois de fechar, mande para o cliente o número do pedido e o link que a ferramenta devolver.',
-    '',
-    'REGRAS DA CASA QUE NÃO SE NEGOCIAM',
-    '- Entrega é SEMPRE paga pelo site, nunca em dinheiro na mão do entregador.',
-    '  Quem quiser pagar em dinheiro ou maquininha retira no balcão.',
-    podePagarOnline
-      ? '- Pagamento online está disponível (Pix e cartão).'
-      : '- O pagamento online ainda NÃO está ligado. Portanto só dá para fechar pedido de RETIRADA, pagando no balcão. Se pedirem entrega, explique isso com jeito.',
+    'REGRAS DA CASA',
+    '- Entrega é sempre paga pelo site. Quem quiser pagar em dinheiro ou maquininha',
+    '  retira no balcão.',
     config.pedido_minimo_centavos > 0
       ? `- Pedido mínimo: ${moeda(config.pedido_minimo_centavos)}.`
       : '',
     `- Preparo leva cerca de ${config.tempo_preparo_min} min.`,
-    '- Reclamação, problema em pedido já entregue ou qualquer coisa fora de pedir comida: chame_atendente.',
+    '- Comida no quilo é só no balcão do restaurante, não dá para pedir pelo site.',
+    '- Reclamação, problema em pedido já entregue, troca ou devolução: chamar_atendente.',
     '',
     'AGORA',
     loja.aberta
       ? `- A loja está ABERTA${loja.horarioHoje ? ` (hoje ${loja.horarioHoje.abre} às ${loja.horarioHoje.fecha})` : ''}.`
-      : `- A loja está FECHADA agora. ${loja.motivo ?? ''} Não dá para fechar pedido; avise e convide a voltar no horário.`,
-    conversa.nome ? `- O cliente se chama ${conversa.nome}.` : '- Ainda não sabemos o nome do cliente.',
-    conversa.tipo_entrega
-      ? `- Já combinado: ${conversa.tipo_entrega}.`
-      : '- Ainda não sabemos se é retirada ou entrega.',
+      : `- A loja está FECHADA agora. ${loja.motivo ?? ''} Avise e convide a voltar no horário.`,
+    conversa.nome
+      ? `- O cliente se chama ${conversa.nome}.`
+      : '- Ainda não sabemos o nome do cliente.',
     '',
-    `CARRINHO AGORA\n${carrinho}`,
-    '',
-    `CARDÁPIO (use o id exato ao chamar ferramenta)\n${cardapio}`,
+    `CARDÁPIO DE HOJE\n${cardapio}`,
     '',
     `BAIRROS QUE ENTREGAMOS\n${bairros}`,
   ]
 
   return regras.filter((l) => l !== '').join('\n')
+}
+
+/** O que o chatbot sem IA precisa saber para responder. */
+async function contextoSimples(conversa: Conversa) {
+  const [config, horarios, bairros] = await Promise.all([
+    buscarConfiguracoes(),
+    buscarHorarios(),
+    buscarBairros(),
+  ])
+  const loja = estadoDaLoja(config, horarios)
+
+  return {
+    nomeLoja: config.nome,
+    link: process.env.NEXT_PUBLIC_URL_BASE?.replace(/\/$/, '') ?? '',
+    aberta: loja.aberta,
+    motivoFechada: loja.motivo ?? null,
+    horarioHoje: loja.horarioHoje
+      ? { abre: loja.horarioHoje.abre, fecha: loja.horarioHoje.fecha }
+      : null,
+    bairros: bairros.map((b) => ({ nome: b.nome, taxa: moeda(b.taxa_centavos) })),
+    tempoPreparoMin: config.tempo_preparo_min,
+    // primeira mensagem da conversa: vale se apresentar
+    primeiraVez: conversa.mensagens.length === 0,
+  }
 }
 
 export { abrirConversa, normalizarTelefone } from './estado'

@@ -4,30 +4,16 @@ import { apenasDigitos } from '@/lib/format'
 /**
  * Estado da conversa de WhatsApp.
  *
- * O carrinho mora aqui, em coluna do banco — nunca na transcrição. Se
- * dependesse do modelo lembrar o que foi pedido, um resumo mal feito viraria
- * pedido errado na cozinha.
+ * Não existe carrinho aqui: pedido é sempre pelo site. O que a conversa
+ * guarda é só o fio da meada — quem é a pessoa, o que já foi dito, e se um
+ * humano assumiu o atendimento.
  */
-
-export type ItemDoCarrinho = {
-  produtoId: string
-  quantidade: number
-  opcaoIds: string[]
-  observacao?: string
-}
 
 export type Conversa = {
   id: string
   telefone: string
   nome: string | null
   mensagens: { papel: 'cliente' | 'agente'; texto: string }[]
-  carrinho: ItemDoCarrinho[]
-  tipo_entrega: 'retirada' | 'entrega' | null
-  bairro_id: string | null
-  endereco_rua: string | null
-  endereco_numero: string | null
-  endereco_complemento: string | null
-  endereco_referencia: string | null
   humano_assumiu: boolean
   ultimo_pedido_id: string | null
   ultima_mensagem_id: string | null

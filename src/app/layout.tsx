@@ -6,6 +6,11 @@ import './globals.css'
  * src/app/apple-icon.png — não precisa declarar nada aqui.
  */
 export const metadata: Metadata = {
+  /**
+   * Sem isto, o Next monta og:image relativo — e WhatsApp, Instagram e Google
+   * precisam de URL absoluta para buscar a imagem da prévia.
+   */
+  metadataBase: new URL(process.env.NEXT_PUBLIC_URL_BASE ?? 'http://localhost:3000'),
   title: {
     default: 'Churrascaria Brasa Viva — Cardápio',
     template: '%s · Brasa Viva',
@@ -17,9 +22,26 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'Churrascaria Brasa Viva',
     description: 'O Tradicional Churrasco Baiano. Peça pelo celular.',
-    images: ['/fachada.webp'],
+    // JPEG de propósito: a prévia do WhatsApp não renderiza WebP. Medidas
+    // declaradas porque alguns leitores não baixam a imagem só para medir.
+    images: [
+      {
+        url: '/og.jpg',
+        width: 1200,
+        height: 630,
+        type: 'image/jpeg',
+        alt: 'Churrascaria Brasa Viva — o Tradicional Churrasco Baiano',
+      },
+    ],
     type: 'website',
     locale: 'pt_BR',
+    siteName: 'Churrascaria Brasa Viva',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Churrascaria Brasa Viva',
+    description: 'O Tradicional Churrasco Baiano. Peça pelo celular.',
+    images: ['/og.jpg'],
   },
   // cardápio de restaurante não tem por que aparecer em busca com página
   // de pedido de cliente; o robots cuida do essencial

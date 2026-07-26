@@ -100,11 +100,16 @@ UAZAPI_URL=
 UAZAPI_TOKEN=
 ```
 
-Para ligar o **agente de IA no WhatsApp**, adicione também:
+Para ligar o **atendimento automático no WhatsApp**, adicione também:
 
 ```
-ANTHROPIC_API_KEY=<ou OPENAI_API_KEY, uma das duas>
 WHATSAPP_WEBHOOK_TOKEN=<invente uma senha longa>
+```
+
+E, **se quiser** que o chatbot use IA (ele funciona sem, respondendo por palavra-chave):
+
+```
+OPENAI_API_KEY=<ou ANTHROPIC_API_KEY, uma das duas>
 ```
 
 ⚠️ O `WHATSAPP_WEBHOOK_TOKEN` protege um endereço que é público na internet e

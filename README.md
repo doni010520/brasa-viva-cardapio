@@ -91,25 +91,41 @@ Falha no envio **nunca** derruba um pedido — é registrada no log e ignorada.
 > Se algum número específico não receber, o suspeito de sempre é o **9º dígito**
 > do celular. Comece a investigação por `numeroParaEnvio()` em `src/lib/whatsapp.ts`.
 
-### 7. Ligar o agente de IA no WhatsApp (opcional)
+### 7. Atendimento automático no WhatsApp
 
-O robô conversa com o cliente, monta o pedido e manda para a cozinha. Precisa de três coisas:
+Um **chatbot que direciona para o site**. Ele responde cardápio, preço, horário e área de
+entrega, diz em que pé está o pedido do cliente, chama a equipe quando o assunto é sério — e
+sempre manda o link para pedir. **Ele não anota pedido**, e isso é decisão de negócio: pedido é
+no site, onde o preço é conferido, o pagamento acontece e o cliente vê o que está levando antes
+de confirmar.
 
-1. a uazapi do passo anterior conectada;
-2. `ANTHROPIC_API_KEY` **ou** `OPENAI_API_KEY` no servidor (`AGENTE_MODELO` fixa o modelo, se quiser);
-3. `WHATSAPP_WEBHOOK_TOKEN` — invente uma senha longa.
+Precisa de: a uazapi do passo anterior conectada, e um `WHATSAPP_WEBHOOK_TOKEN` (invente uma
+senha longa). Na uazapi, cadastre o webhook `https://SEU-DOMINIO/api/whatsapp/webhook` mandando
+o token no cabeçalho `x-webhook-token`. Depois, em **WhatsApp** no painel, ligue a chave — ela
+nasce desligada, porque ninguém liga um robô atendendo cliente sem querer.
 
-Na uazapi, cadastre o webhook `https://SEU-DOMINIO/api/whatsapp/webhook` mandando o token no
-cabeçalho `x-webhook-token`. Depois, em **WhatsApp** no painel, ligue a chave — ela nasce
-desligada, porque ninguém liga um robô atendendo cliente sem querer.
+**A IA é opcional.** Sem chave de API, ele responde por palavra-chave (cardápio, entrega,
+horário, meu pedido, atendente): é instantâneo, não custa nada e não tem como alucinar. Se
+quiser que ele entenda pergunta escrita de qualquer jeito, preencha `OPENAI_API_KEY` **ou**
+`ANTHROPIC_API_KEY` (`AGENTE_MODELO` fixa o modelo). O painel mostra em qual modo está.
 
 Nessa tela o dono também escreve o jeito de falar da casa, **experimenta o robô** antes de
-soltar, e assume qualquer conversa com um toque.
+soltar, e assume qualquer conversa com um toque — quando um humano assume, o robô não volta
+sozinho.
 
-> ⚠️ O webhook é um endereço público que **fecha pedido de verdade**. Sem o token configurado
-> ele responde 401 para todo mundo, de propósito.
+> ⚠️ O webhook é um endereço público. Sem o token configurado ele responde 401 para todo mundo,
+> de propósito.
 
----
+### 8. Parabéns de aniversário (opcional)
+
+Chame `https://SEU-DOMINIO/api/tarefas/diarias` uma vez por dia, de manhã, num agendador de sua
+preferência — com o mesmo `WHATSAPP_WEBHOOK_TOKEN` no cabeçalho `x-webhook-token`.
+
+Vai só para quem informou a data no pedido e aceita receber promoção, uma vez por ano por
+pessoa. A mensagem e um cupom de presente opcional se configuram em **WhatsApp** no painel.
+Chamar duas vezes no mesmo dia não manda mensagem repetida: o ano do último parabéns fica
+gravado, e a marca é feita antes do envio — se a uazapi cair no meio da fila, alguém fica sem
+parabéns, o que é melhor que alguém receber três.
 
 ## Como o dono usa no dia a dia
 
@@ -167,14 +183,21 @@ O que deliberadamente **não** existe é buscar pedido por telefone: quem soubes
 alguém veria o nome, o endereço de entrega e tudo que a pessoa já comprou. Isso só seria seguro
 com uma prova de posse do número — exatamente a burocracia que o sistema não quer ter.
 
-**O robô conversa; quem faz conta é o sistema.** O agente de WhatsApp (`src/lib/agente/`)
-não soma, não decide taxa e não grava pedido: ele só escolhe ids e chama ferramenta. Todo pedido
-— do site ou do robô — passa pelo mesmo `src/lib/criar-pedido.ts`, que recalcula preço a partir
-do banco e aplica as regras da casa. Se o modelo alucinar um prato, a ferramenta recusa e ele
-tem que se explicar ao cliente; o pior caso é uma resposta sem graça, nunca um valor errado
-cobrado. O carrinho fica em coluna do banco, não na transcrição, para a comanda não depender de
-o modelo lembrar direito do que foi dito. E quando um humano assume a conversa, a IA **não volta
-sozinha** — só o painel devolve.
+**O WhatsApp não fecha pedido — e isso é decisão, não limitação.** O chatbot
+(`src/lib/agente/`) só tem três ferramentas: guardar o nome, consultar o status do pedido e
+chamar um humano. Não existe ferramenta de carrinho nem de fechar pedido, então nem uma
+alucinação consegue criar pedido — o pior caso é uma frase errada numa conversa. Pedido é
+sempre pelo site, pelo `src/lib/criar-pedido.ts`, que é o único caminho que grava pedido no
+sistema (o checkout do site também passa por ele).
+
+**A IA é uma melhoria, não um requisito.** `modelo-simples.ts` responde por palavra-chave e
+cobre o que 90% das mensagens pedem: cardápio, entrega, horário, status, atendente. Com uma
+chave de API, um modelo entra no lugar dele e conversa mais solto. A interface entre os dois é
+a mesma (`Modelo`), e é ela que também permite o teste rodar com um modelo de mentira de
+roteiro fixo — atendimento de restaurante não pode depender de sorteio para ser testado.
+
+**Quando um humano assume, a IA não volta sozinha.** Só o painel devolve a conversa. Robô
+entrando no meio de um atendimento humano é o jeito mais rápido de perder um cliente.
 
 **RLS fechado por padrão.** A chave anônima só lê o cardápio. Pedidos, cupons e configurações
 são escritos por server actions com `service_role`, e cada uma delas chama `exigirAdmin()` —

@@ -4,8 +4,8 @@
  * O modelo de verdade é substituído por um DE MENTIRA, com roteiro fixo, por
  * dois motivos: o teste não pode depender de chave de API nem de o modelo
  * estar de bom humor, e o que precisa ser garantido aqui não é a lábia do
- * robô — é que o pedido chegue certo na cozinha e que ele não consiga
- * inventar preço, prato ou forma de pagamento proibida.
+ * robô — é que ele NÃO consiga fechar pedido nem inventar preço, e que leve o
+ * cliente para o site.
  *
  * Sobe um servidor de modelo falso e uma instância do app apontada para ele.
  * O MESMO roteiro roda nos dois provedores — o cliente do restaurante não
@@ -24,6 +24,12 @@ const PORTA_APP = 3131
 const APP = `http://localhost:${PORTA_APP}`
 const TOKEN = 'token-de-teste-do-webhook'
 const TELEFONE = '71977776666'
+/**
+ * Toda NEXT_PUBLIC_* é gravada DENTRO do código no momento do build — passar
+ * outra por variável de ambiente no `next start` não muda nada. Então o teste
+ * confere o mesmo valor que foi compilado, que é o do .env.local.
+ */
+const LINK = env.NEXT_PUBLIC_URL_BASE.replace(/\/$/, '')
 
 let passos = 0
 let falhas = 0
@@ -173,6 +179,7 @@ async function esperarApp() {
 // ------------------------------------------------------------------ execução
 await sql(`delete from public.conversas_whatsapp where telefone = '${TELEFONE}';`)
 await sql(`delete from public.pedidos where cliente_telefone like '%${TELEFONE}%';`)
+await sql(`delete from public.clientes where telefone = '${TELEFONE}';`)
 await sql('update public.configuracoes set agente_whatsapp_ativo = true where id = 1;')
 
 // ids reais do cardápio: o agente só pode usar o que existe
@@ -251,118 +258,83 @@ try {
   })
   conferir((await grupo.json()).ignorado === 'grupo', 'mensagem de grupo é ignorada')
 
-  // --------------------------------------------- 2. conversa que vira pedido
-  console.log('\n2) Conversa que termina em pedido na cozinha')
+  // --------------------------------------------- 2. conversa comum
+  console.log('\n2) Conversa: tira dúvida e manda para o site')
 
-  fila.push({ texto: 'Opa! Tudo bom? Temos marmita fresquinha hoje. O que vai ser?' })
+  fila.push({ texto: 'Opa! Temos marmita fresquinha hoje. Peça pelo site: ' + LINK })
   const r1 = await mandarMensagem('boa tarde, o que tem hoje?')
   conferir((await r1.json()).ok === true, 'robô respondeu a primeira mensagem')
 
-  // o modelo pede a ferramenta; depois de executada, ele fala com o cliente
-  fila.push({ ferramenta: 'adicionar_item', argumentos: { produto_id: produto.id, quantidade: 2 } })
-  fila.push({ texto: 'Anotei 2! Mais alguma coisa?' })
-  await mandarMensagem(`quero 2 ${produto.nome}`)
-
-  const comCarrinho = await sql(
-    `select carrinho, nome from public.conversas_whatsapp where telefone = '${TELEFONE}';`
+  const guardada = await sql(
+    `select mensagens from public.conversas_whatsapp where telefone = '${TELEFONE}';`
   )
-  conferir(comCarrinho[0]?.carrinho?.length === 1, 'item entrou no carrinho da conversa')
-  conferir(comCarrinho[0]?.carrinho?.[0]?.quantidade === 2, 'quantidade guardada certa')
+  const dita = guardada[0]?.mensagens?.at(-1)?.texto ?? ''
+  conferir(dita.includes(LINK), 'a resposta do robô carrega o link do site')
 
-  // --------------------------------------------- 3. o que ele NÃO consegue
-  console.log('\n3) O que o robô NÃO consegue fazer')
+  // ------------------------------------- 3. o robô NÃO consegue fechar pedido
+  console.log('\n3) O robô não anota pedido — nem se quiser')
 
-  fila.push({
-    ferramenta: 'adicionar_item',
-    argumentos: { produto_id: '00000000-0000-0000-0000-000000000000', quantidade: 1 },
-  })
-  fila.push({ texto: 'Esse a gente não tem, viu?' })
-  await mandarMensagem('quero um prato de lagosta ao thermidor')
-
-  const depoisDaInvencao = await sql(
-    `select carrinho from public.conversas_whatsapp where telefone = '${TELEFONE}';`
+  // as ferramentas de carrinho simplesmente não existem mais
+  const nomesDeFerramenta = (prompts.at(-1)?.tools ?? []).map(
+    (f) => f.name ?? f.function?.name
   )
   conferir(
-    depoisDaInvencao[0]?.carrinho?.length === 1,
-    'prato inventado NÃO entra no carrinho'
+    nomesDeFerramenta.length > 0,
+    `o modelo recebe ${nomesDeFerramenta.length} ferramenta(s): ${nomesDeFerramenta.join(', ')}`
   )
+  for (const proibida of ['adicionar_item', 'fechar_pedido', 'definir_entrega', 'remover_item']) {
+    conferir(
+      !nomesDeFerramenta.includes(proibida),
+      `ferramenta "${proibida}" não é oferecida ao modelo`
+    )
+  }
 
-  // entrega paga em dinheiro é proibida pela casa — nem o robô fura
-  fila.push({
-    ferramenta: 'definir_entrega',
-    argumentos: {
-      tipo: 'entrega',
-      bairro_id: bairro.id,
-      rua: 'Rua de Teste',
-      numero: '10',
-    },
-  })
-  fila.push({ ferramenta: 'definir_nome', argumentos: { nome: 'Cliente do Robo' } })
+  // e se o modelo alucinar e chamar mesmo assim, não acontece nada
   fila.push({ ferramenta: 'fechar_pedido', argumentos: { forma_pagamento: 'local' } })
-  fila.push({ texto: 'Para entrega só dá pelo site, viu?' })
-  await mandarMensagem(`manda entregar no ${bairro.nome}, pago em dinheiro`)
+  fila.push({ texto: 'Na verdade é pelo site, viu?' })
+  await mandarMensagem('pode fechar 2 marmitas para mim, pago na retirada')
 
-  const semPedido = await sql(
+  const pedidos = await sql(
     `select count(*)::int as n from public.pedidos where cliente_telefone like '%${TELEFONE}%';`
   )
   conferir(
-    semPedido[0]?.n === 0,
-    'entrega paga em dinheiro é recusada, mesmo o robô mandando fechar'
+    pedidos[0]?.n === 0,
+    'modelo chamando fechar_pedido não cria pedido nenhum (a ferramenta não existe)'
   )
 
-  // --------------------------------------------- 4. fecha de verdade
-  console.log('\n4) Retirada no balcão: fecha de verdade')
+  // ------------------------------------- 4. status de pedido feito no site
+  console.log('\n4) Notícia de pedido que nasceu no site')
 
-  fila.push({ ferramenta: 'definir_entrega', argumentos: { tipo: 'retirada' } })
-  fila.push({ ferramenta: 'fechar_pedido', argumentos: { forma_pagamento: 'local' } })
-  fila.push({ texto: 'Fechado! Pode vir buscar.' })
-  await mandarMensagem('então deixa, eu passo aí para buscar')
+  // pedido criado pelo site, como na vida real
+  const cliente = await sql(`
+    insert into public.clientes (telefone, nome) values ('${TELEFONE}', 'Cliente do Site')
+    on conflict (telefone) do update set nome = excluded.nome returning id;`)
+  const novo = await sql(`
+    insert into public.pedidos
+      (cliente_nome, cliente_telefone, cliente_id, subtotal_centavos, total_centavos,
+       forma_pagamento, status, tipo_entrega)
+    values ('Cliente do Site', '${TELEFONE}', '${cliente[0].id}', 4500, 4500,
+       'local', 'em_preparo', 'retirada')
+    returning id, numero;`)
 
-  const pedidos = await sql(`
-    select p.id, p.numero, p.status, p.total_centavos, p.tipo_entrega, p.forma_pagamento,
-           p.cliente_nome, p.cliente_telefone
-    from public.pedidos p
-    where p.cliente_telefone like '%${TELEFONE}%';`)
+  fila.push({ ferramenta: 'status_do_pedido', argumentos: {} })
+  fila.push({ texto: 'Seu pedido está em preparo!' })
+  await mandarMensagem('cadê meu pedido?')
 
-  conferir(pedidos.length === 1, `pedido criado no banco (${pedidos.length})`)
-  const pedido = pedidos[0]
-
-  if (pedido) {
-    conferir(pedido.status === 'recebido', 'pedido entrou direto na fila da cozinha')
-    conferir(pedido.tipo_entrega === 'retirada', 'gravado como retirada')
-    conferir(pedido.cliente_nome === 'Cliente do Robo', 'nome do cliente foi para o pedido')
-    conferir(
-      pedido.total_centavos === produto.preco * 2,
-      `total conferido pelo SERVIDOR: ${(pedido.total_centavos / 100).toFixed(2)} ` +
-        `(2 x ${(produto.preco / 100).toFixed(2)})`
-    )
-
-    const itens = await sql(
-      `select quantidade, preco_unit_centavos from public.pedido_itens where pedido_id = '${pedido.id}';`
-    )
-    conferir(
-      itens[0]?.preco_unit_centavos === produto.preco,
-      'preço unitário saiu do banco, não do modelo'
-    )
-
-    // o resto do sistema não sabe (nem precisa saber) que veio de robô
-    const fila_impressao = await sql(
-      `select count(*)::int as n from public.impressoes where pedido_id = '${pedido.id}';`
-    )
-    conferir(fila_impressao[0]?.n >= 1, 'comanda entrou na fila de impressão igual a qualquer pedido')
-
-    const cliente = await sql(`
-      select c.nome, c.total_pedidos from public.clientes c
-      join public.pedidos p on p.cliente_id = c.id where p.id = '${pedido.id}';`)
-    conferir(cliente[0]?.nome === 'Cliente do Robo', 'cliente entrou no CRM do dono')
-  }
-
-  const depoisDeFechar = await sql(
-    `select carrinho, ultimo_pedido_id from public.conversas_whatsapp where telefone = '${TELEFONE}';`
+  const conversaDepois = await sql(
+    `select ultimo_pedido_id from public.conversas_whatsapp where telefone = '${TELEFONE}';`
   )
   conferir(
-    depoisDeFechar[0]?.carrinho?.length === 0,
-    'carrinho zerado após fechar (senão "quero mais um" viraria pedido dobrado)'
+    conversaDepois[0]?.ultimo_pedido_id === novo[0].id,
+    'o robô acha pelo telefone o pedido que nasceu no site'
+  )
+
+  // o resultado da ferramenta chega ao modelo com o status certo
+  const contado = JSON.stringify(prompts.at(-1)?.messages ?? [])
+  conferir(contado.includes('Em preparo'), 'o status real é contado ao modelo')
+  conferir(
+    contado.includes(String(novo[0].numero).padStart(3, '0')),
+    'o número do pedido é contado ao modelo'
   )
 
   // --------------------------------------------- 5. mensagem repetida
@@ -403,7 +375,12 @@ try {
   const prompt = prompts.at(-1)?.system ?? ''
   conferir(prompt.includes(produto.nome), 'o cardápio real vai no prompt')
   conferir(
-    prompt.includes('Entrega é SEMPRE paga pelo site'),
+    prompt.includes('VOCÊ NÃO ANOTA PEDIDO'),
+    'a proibição de anotar pedido vai no prompt, em letras garrafais'
+  )
+  conferir(prompt.includes(LINK), 'o link do site vai no prompt')
+  conferir(
+    prompt.includes('Entrega é sempre paga pelo site'),
     'a regra de pagamento da casa vai no prompt'
   )
   conferir(

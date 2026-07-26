@@ -37,12 +37,16 @@ export type Modelo = {
 
 const TEMPO_LIMITE_MS = 25000
 
-/** Qual provedor usar, conforme a chave que existir. */
-export function modeloConfigurado() {
+/**
+ * Tem chave de IA? A IA é OPCIONAL: sem ela o chatbot funciona com regras
+ * fixas (modelo-simples.ts). A chave só melhora a conversa.
+ */
+export function temIA() {
   return Boolean(process.env.ANTHROPIC_API_KEY || process.env.OPENAI_API_KEY)
 }
 
-export function modeloPadrao(): Modelo | null {
+/** Qual provedor de IA, conforme a chave que existir. Null = sem IA. */
+export function modeloDeIA(): Modelo | null {
   if (process.env.ANTHROPIC_API_KEY) return modeloClaude()
   if (process.env.OPENAI_API_KEY) return modeloOpenAI()
   return null

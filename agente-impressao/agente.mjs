@@ -104,11 +104,56 @@ async function imprimirNoWindows(bytes) {
   }
 }
 
-/** Só escreve num arquivo. Serve para testar sem impressora nenhuma. */
+/**
+ * Tira os códigos de controle da impressora e devolve só o texto.
+ *
+ * O .bin é o que a impressora entende, mas é ilegível para gente. Como o modo
+ * arquivo existe justamente para quem AINDA NÃO TEM impressora, ele grava os
+ * dois: o .bin (fiel ao que sairia no papel) e um .txt que dá para abrir e ler.
+ */
+function textoLegivel(bytes) {
+  const ESC = 0x1b
+  const GS = 0x1d
+  let saida = ''
+
+  for (let i = 0; i < bytes.length; i++) {
+    const b = bytes[i]
+
+    if (b === ESC) {
+      const comando = bytes[i + 1]
+      // ESC @ (inicializa) não tem parâmetro; ESC a/E/d têm um byte
+      i += comando === 0x40 ? 1 : 2
+      continue
+    }
+    if (b === GS) {
+      const comando = bytes[i + 1]
+      // GS V (corte) tem dois parâmetros; GS ! (tamanho) tem um
+      i += comando === 0x56 ? 3 : 2
+      if (comando === 0x56) saida += '\n' + '─'.repeat(42) + '  ✂\n'
+      continue
+    }
+
+    if (b === 0x0a) saida += '\n'
+    else if (b >= 0x20) saida += String.fromCharCode(b)
+  }
+
+  return saida
+}
+
+/** Só escreve em arquivo. Serve para testar sem impressora nenhuma. */
 async function imprimirEmArquivo(bytes, id) {
-  const destino = join(cfg.PASTA_SAIDA || aqui, `comanda-${id}.bin`)
-  await writeFile(destino, Buffer.from(bytes))
-  log(`  (modo arquivo) gravado em ${destino}`)
+  const pasta = cfg.PASTA_SAIDA || aqui
+  const bin = join(pasta, `comanda-${id}.bin`)
+  const txt = join(pasta, `comanda-${id}.txt`)
+
+  await writeFile(bin, Buffer.from(bytes))
+  await writeFile(txt, textoLegivel(bytes), 'utf8')
+
+  log(`  (modo arquivo) gravado em ${txt}`)
+  // No teste, ver a comanda na tela vale mais que abrir o arquivo.
+  if (cfg.MOSTRAR_NA_TELA !== 'nao') {
+    console.log('\n' + textoLegivel(bytes) + '\n')
+  }
 }
 
 async function imprimir(bytes, id) {

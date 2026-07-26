@@ -3,7 +3,6 @@
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { atender } from '@/lib/agente'
-import { modeloConfigurado } from '@/lib/agente/modelo'
 import { criarClienteAdmin, exigirAdmin, exigirDono } from '@/lib/supabase/server'
 import { enviarTexto } from '@/lib/whatsapp'
 
@@ -11,6 +10,8 @@ const esquemaConfig = z.object({
   ativo: z.boolean(),
   nome: z.string().trim().min(2).max(40),
   instrucoes: z.string().trim().max(2000),
+  mensagemAniversario: z.string().trim().max(1000),
+  cupomAniversario: z.string().trim().max(30),
 })
 
 export async function salvarAgenteAction(entrada: unknown) {
@@ -19,16 +20,7 @@ export async function salvarAgenteAction(entrada: unknown) {
   const analise = esquemaConfig.safeParse(entrada)
   if (!analise.success) return { ok: false as const, erro: 'Confira os campos.' }
 
-  const { ativo, nome, instrucoes } = analise.data
-
-  // Ligar um robô que não tem modelo atrás deixaria o cliente no vácuo:
-  // o webhook aceitaria a mensagem e ninguém responderia.
-  if (ativo && !modeloConfigurado()) {
-    return {
-      ok: false as const,
-      erro: 'Falta a chave do modelo de IA no servidor (ANTHROPIC_API_KEY ou OPENAI_API_KEY).',
-    }
-  }
+  const { ativo, nome, instrucoes, mensagemAniversario, cupomAniversario } = analise.data
 
   await criarClienteAdmin()
     .from('configuracoes')
@@ -36,6 +28,8 @@ export async function salvarAgenteAction(entrada: unknown) {
       agente_whatsapp_ativo: ativo,
       agente_nome: nome,
       agente_instrucoes: instrucoes || null,
+      mensagem_aniversario: mensagemAniversario || null,
+      cupom_aniversario: cupomAniversario.toUpperCase() || null,
     })
     .eq('id', 1)
 
@@ -106,10 +100,6 @@ const TELEFONE_DE_TESTE = '00000000000'
 
 export async function experimentarAgenteAction(texto: string) {
   await exigirDono()
-
-  if (!modeloConfigurado()) {
-    return { ok: false as const, erro: 'Falta a chave do modelo de IA no servidor.' }
-  }
 
   const limpo = texto.trim().slice(0, 500)
   if (!limpo) return { ok: false as const, erro: 'Escreva alguma coisa.' }
