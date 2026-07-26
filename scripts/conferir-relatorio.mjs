@@ -7,6 +7,7 @@
 import { readFile } from 'node:fs/promises'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { limparTudoComPermissao } from './limpeza.mjs'
 
 const raiz = join(dirname(fileURLToPath(import.meta.url)), '..')
 const env = {}
@@ -40,7 +41,7 @@ const conferir = (c, m) => (c ? (ok++, console.log(`  [ok] ${m}`)) : (falhas++, 
 const real = (c) => `R$ ${(c / 100).toFixed(2)}`
 
 console.log('\nMontando vendas de teste...')
-await sql('delete from public.pedidos;')
+await limparTudoComPermissao(sql, 'conferir-relatorio')
 await sql("delete from public.clientes where telefone like '9199%';")
 
 // 3 vendas boas + 1 cancelada + 1 sem pagar (as duas últimas NÃO podem contar)
@@ -131,7 +132,7 @@ await sql("select public.relatorio_vendas(now() - interval '365 days', now()) as
 const ms = Date.now() - t0
 conferir(ms < 4000, `relatório de 1 ano respondeu em ${ms}ms`)
 
-await sql('delete from public.pedidos;')
+await limparTudoComPermissao(sql, 'conferir-relatorio')
 await sql("delete from public.clientes where telefone like '9199%';")
 
 console.log('\n============================================')

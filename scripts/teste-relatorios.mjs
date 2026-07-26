@@ -8,6 +8,7 @@ import { readFile, mkdir } from 'node:fs/promises'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { EMAIL_ADMIN, SENHA_ADMIN } from './credenciais.mjs'
+import { limparTudoComPermissao } from './limpeza.mjs'
 
 const raiz = join(dirname(fileURLToPath(import.meta.url)), '..')
 const TIROS = join(raiz, '.testes')
@@ -49,7 +50,7 @@ const conferir = (c, m) =>
 
 // ------------------------------------------------- planta 30 dias de vendas
 console.log('\nPlantando vendas espalhadas nos últimos 30 dias...')
-await sql('delete from public.pedidos;')
+await limparTudoComPermissao(sql, 'teste-relatorios')
 await sql("delete from public.clientes where telefone like '7197%';")
 
 const produtos = await sql('select id, nome, preco_centavos from public.produtos limit 6;')
@@ -223,7 +224,7 @@ try {
   await navegador.close()
 }
 
-await sql('delete from public.pedidos;')
+await limparTudoComPermissao(sql, 'teste-relatorios')
 await sql("delete from public.clientes where telefone like '7197%';")
 
 console.log('\n============================================')

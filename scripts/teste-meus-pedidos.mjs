@@ -14,6 +14,7 @@
 import { chromium } from 'playwright'
 import { mkdir } from 'node:fs/promises'
 import { env, EMAIL_ADMIN, SENHA_ADMIN } from './credenciais.mjs'
+import { limparDadosDeTeste } from './limpeza.mjs'
 
 const BASE = 'http://localhost:3000'
 const TIROS = 'C:/Users/adoni/cardapio-online/.testes'
@@ -37,8 +38,8 @@ async function sql(query) {
   return r.json()
 }
 
-// Painel limpo: com sobras de execuções anteriores o teste clica no card errado.
-await sql('delete from public.pedidos;')
+// Só o rastro dos testes anteriores. Pedido de gente de verdade fica de pé.
+await limparDadosDeTeste(sql)
 
 const navegador = await chromium.launch()
 

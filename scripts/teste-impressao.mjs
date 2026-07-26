@@ -12,6 +12,7 @@ import { spawn } from 'node:child_process'
 import { readFile, writeFile, mkdir, readdir, rm } from 'node:fs/promises'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { limparDadosDeTeste } from './limpeza.mjs'
 
 const raiz = join(dirname(fileURLToPath(import.meta.url)), '..')
 const SAIDA = join(raiz, '.testes', 'comandas')
@@ -54,7 +55,7 @@ const conferir = (c, m) => (c ? bom(m) : ruim(m))
 const espera = (ms) => new Promise((r) => setTimeout(r, ms))
 
 // ------------------------------------------------------ limpa o terreno
-await sql(`delete from public.pedidos;`)
+await limparDadosDeTeste(sql)
 await sql(`delete from public.impressoes;`)
 
 console.log('\n1) Segurança da fila')
@@ -193,7 +194,7 @@ console.log(
 )
 
 // ------------------------------------------------------ limpeza
-await sql(`delete from public.pedidos;`)
+await limparDadosDeTeste(sql)
 await rm(join(raiz, 'agente-impressao', '.env'), { force: true })
 
 console.log('\n============================================')

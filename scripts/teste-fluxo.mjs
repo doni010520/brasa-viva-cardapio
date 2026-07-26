@@ -8,6 +8,7 @@
 import { chromium } from 'playwright'
 import { mkdir, readFile } from 'node:fs/promises'
 import { env, EMAIL_ADMIN, SENHA_ADMIN } from './credenciais.mjs'
+import { limparDadosDeTeste } from './limpeza.mjs'
 
 const BASE = 'http://localhost:3000'
 const TIROS = 'C:/Users/adoni/cardapio-online/.testes'
@@ -31,24 +32,20 @@ function conferir(condicao, mensagem) {
   condicao ? ok(mensagem) : falha(mensagem)
 }
 
-// Zera os pedidos antes de começar: com o painel cheio de sobras de execuções
-// anteriores, o teste clicava no card errado e acusava falha onde não havia.
+// Limpa só o rastro dos testes: com sobras de execuções anteriores o teste
+// clicava no card errado. Pedido de gente de verdade continua no painel.
 {
-  const env = {}
-  for (const l of (await readFile('C:/Users/adoni/cardapio-online/.env.local', 'utf8')).split('\n')) {
-    const t = l.trim()
-    if (!t || t.startsWith('#')) continue
-    const i = t.indexOf('=')
-    if (i > 0) env[t.slice(0, i).trim()] = t.slice(i + 1).trim()
-  }
-  await fetch(`https://api.supabase.com/v1/projects/${env.PROJECT_ID}/database/query`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${env.SUPABASE_ACCESS_TOKEN}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ query: 'delete from public.pedidos;' }),
-  })
+  const sql = (query) =>
+    fetch(`https://api.supabase.com/v1/projects/${env.PROJECT_ID}/database/query`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${env.SUPABASE_ACCESS_TOKEN}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ query }),
+    }).then((r) => r.json())
+
+  await limparDadosDeTeste(sql)
 }
 
 const navegador = await chromium.launch()
