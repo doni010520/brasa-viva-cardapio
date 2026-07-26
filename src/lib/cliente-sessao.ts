@@ -18,8 +18,22 @@ import type { Cliente } from './types'
 export const COOKIE_CLIENTE = 'bv_cliente'
 
 const VALIDADE_CODIGO_MIN = 10
-/** 90 dias: quem pede almoço uma vez por semana nunca mais vê tela de login. */
+
+/**
+ * A sessão é uma JANELA DESLIZANTE, não um prazo fixo: cada visita empurra o
+ * vencimento 90 dias para frente. Quem pede almoço de vez em quando nunca mais
+ * vê tela de login — some só quem sumiu por 3 meses.
+ */
 const VALIDADE_SESSAO_DIAS = 90
+/** Não adianta escrever no banco a cada clique; uma vez por dia basta. */
+const RENOVA_A_CADA_HORAS = 24
+/**
+ * O cookie em si vai no teto que o navegador aceita (o Chrome corta em 400
+ * dias). Quem manda no prazo é o banco — cookie velho sem sessão viva não
+ * abre nada. Assim o cookie nunca vence antes da sessão.
+ */
+const VALIDADE_COOKIE_DIAS = 400
+
 const MAX_TENTATIVAS = 5
 /** Freio contra quem fica pedindo código para o número dos outros. */
 const MAX_CODIGOS_POR_HORA = 5
@@ -161,14 +175,19 @@ export async function confirmarCodigo(
     .eq('telefone', telefone)
     .maybeSingle()
 
-  const token = randomBytes(32).toString('hex')
-  const expiraEm = new Date(Date.now() + VALIDADE_SESSAO_DIAS * 24 * 60 * 60 * 1000)
+  await abrirSessao(telefone, cliente?.id ?? null)
+  return { ok: true }
+}
 
-  await supabase.from('sessoes_cliente').insert({
+/** Cria a sessão e planta o cookie. Serve para o código e para o link mágico. */
+async function abrirSessao(telefone: string, clienteId: string | null) {
+  const token = randomBytes(32).toString('hex')
+
+  await criarClienteAdmin().from('sessoes_cliente').insert({
     token_hash: digest(token),
-    cliente_id: cliente?.id ?? null,
+    cliente_id: clienteId,
     telefone,
-    expira_em: expiraEm.toISOString(),
+    expira_em: new Date(Date.now() + VALIDADE_SESSAO_DIAS * 24 * 60 * 60 * 1000).toISOString(),
   })
 
   const bau = await cookies()
@@ -177,10 +196,84 @@ export async function confirmarCodigo(
     sameSite: 'lax',
     secure: process.env.NODE_ENV === 'production',
     path: '/',
-    expires: expiraEm,
+    expires: new Date(Date.now() + VALIDADE_COOKIE_DIAS * 24 * 60 * 60 * 1000),
   })
+}
 
-  return { ok: true }
+/** O link mágico dura o suficiente para a pessoa achar a mensagem depois. */
+const VALIDADE_LINK_DIAS = 30
+
+/**
+ * Gera o link que entra na conta sem digitar nada.
+ *
+ * Vai dentro da confirmação do pedido no WhatsApp: quem recebeu a mensagem é
+ * dono do número, que é exatamente a prova que o código de 6 dígitos dá.
+ * Devolve null se o site não sabe a própria URL — link quebrado na mão do
+ * cliente é pior que link nenhum.
+ */
+export async function criarLinkDeAcesso(entrada: string): Promise<string | null> {
+  const telefone = telefoneNormalizado(entrada)
+  const base = process.env.NEXT_PUBLIC_URL_BASE?.replace(/\/$/, '')
+  // sem WhatsApp conectado o link não teria por onde chegar: não gera à toa
+  if (!telefone || !base || !whatsappConfigurado()) return null
+
+  const token = randomBytes(24).toString('base64url')
+
+  const { error } = await criarClienteAdmin().from('codigos_acesso').insert({
+    telefone,
+    tipo: 'link',
+    codigo_hash: digest(token),
+    expira_em: new Date(Date.now() + VALIDADE_LINK_DIAS * 24 * 60 * 60 * 1000).toISOString(),
+  })
+  if (error) return null
+
+  return `${base}/entrar/link?t=${token}`
+}
+
+/**
+ * Confere o link SEM gastar. O WhatsApp abre todo link que passa por ele para
+ * montar a pré-visualização; se o simples acesso queimasse o token, o cliente
+ * receberia um link já usado. Quem gasta é `entrarPeloLink`, no clique.
+ */
+export async function conferirLink(token: string): Promise<{ telefone: string } | null> {
+  if (!token) return null
+
+  const { data } = await criarClienteAdmin()
+    .from('codigos_acesso')
+    .select('telefone, expira_em, usado_em')
+    .eq('codigo_hash', digest(token))
+    .eq('tipo', 'link')
+    .maybeSingle()
+
+  if (!data || data.usado_em || new Date(data.expira_em) < new Date()) return null
+  return { telefone: data.telefone }
+}
+
+export async function entrarPeloLink(token: string): Promise<boolean> {
+  const supabase = criarClienteAdmin()
+
+  const { data: registro } = await supabase
+    .from('codigos_acesso')
+    .select('id, telefone, expira_em, usado_em')
+    .eq('codigo_hash', digest(token))
+    .eq('tipo', 'link')
+    .maybeSingle()
+
+  if (!registro || registro.usado_em || new Date(registro.expira_em) < new Date()) return false
+
+  await supabase
+    .from('codigos_acesso')
+    .update({ usado_em: new Date().toISOString() })
+    .eq('id', registro.id)
+
+  const { data: cliente } = await supabase
+    .from('clientes')
+    .select('id')
+    .eq('telefone', registro.telefone)
+    .maybeSingle()
+
+  await abrirSessao(registro.telefone, cliente?.id ?? null)
+  return true
 }
 
 export type SessaoCliente = {
@@ -197,7 +290,7 @@ export async function clienteAtual(): Promise<SessaoCliente | null> {
   const supabase = criarClienteAdmin()
   const { data: sessao } = await supabase
     .from('sessoes_cliente')
-    .select('id, cliente_id, telefone, expira_em')
+    .select('id, cliente_id, telefone, expira_em, ultimo_acesso')
     .eq('token_hash', digest(token))
     .maybeSingle()
 
@@ -205,6 +298,23 @@ export async function clienteAtual(): Promise<SessaoCliente | null> {
   if (new Date(sessao.expira_em) < new Date()) {
     await supabase.from('sessoes_cliente').delete().eq('id', sessao.id)
     return null
+  }
+
+  // Janela deslizante: cada visita empurra o vencimento para frente, então
+  // quem usa nunca é deslogado. O prazo mora aqui e não no cookie porque
+  // página renderizada no servidor não pode reescrever cookie no Next.
+  const desdeUltimoAcesso = Date.now() - new Date(sessao.ultimo_acesso).getTime()
+  if (desdeUltimoAcesso > RENOVA_A_CADA_HORAS * 60 * 60 * 1000) {
+    const agora = new Date()
+    await supabase
+      .from('sessoes_cliente')
+      .update({
+        ultimo_acesso: agora.toISOString(),
+        expira_em: new Date(
+          agora.getTime() + VALIDADE_SESSAO_DIAS * 24 * 60 * 60 * 1000
+        ).toISOString(),
+      })
+      .eq('id', sessao.id)
   }
 
   // o cliente pode ter nascido depois da sessão (primeiro pedido veio depois)

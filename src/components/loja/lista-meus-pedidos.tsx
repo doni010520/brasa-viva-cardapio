@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { ArrowLeft, ChevronRight, Loader2, LogOut, MessageCircle, Phone } from 'lucide-react'
 import { buscarMeusPedidosAction } from '@/app/(loja)/meus-pedidos/acoes'
 import { sairAction } from '@/app/(loja)/entrar/acoes'
+import { DicaInstalar } from '@/components/loja/dica-instalar'
 import { Botao, Cartao, Selo, Vazio } from '@/components/ui'
 import { linkWhatsapp, mascaraTelefone, moeda } from '@/lib/format'
 import { dataHoraCurta } from '@/lib/tempo'
@@ -166,6 +167,10 @@ export function ListaMeusPedidos({
           </Link>
         </Cartao>
       )}
+
+      {/* Só faz sentido para quem entrou: é quem tem sessão a perder se o
+          navegador do iPhone limpar os dados do site. */}
+      {sessao && <DicaInstalar />}
 
       <Cartao className="mt-4 p-4">
         <h2 className="font-bold text-tinta-900">Não achou seu pedido?</h2>

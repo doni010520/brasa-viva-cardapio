@@ -11,6 +11,7 @@
  */
 import { chromium } from 'playwright'
 import { mkdir } from 'node:fs/promises'
+import { createHash } from 'node:crypto'
 import { env, EMAIL_ADMIN, SENHA_ADMIN } from './credenciais.mjs'
 
 const BASE = 'http://localhost:3000'
@@ -36,7 +37,7 @@ async function sql(query) {
 }
 
 // Painel limpo: com sobras de execuções anteriores o teste clica no card errado.
-await sql('delete from public.pedidos;')
+await sql('delete from public.pedidos; delete from public.sessoes_cliente; delete from public.codigos_acesso;')
 
 const navegador = await chromium.launch()
 
@@ -285,6 +286,99 @@ try {
       nomePreenchido === 'Cliente Historico',
       `checkout já vem com o nome de quem entrou ("${nomePreenchido}")`
     )
+
+    // ------------------------------------ continuar logado (o ponto do iFood)
+    console.log('\n5c) A sessão não pede senha de novo')
+    const biscoito = (await celularNovo.cookies()).find((c) => c.name === 'bv_cliente')
+    conferir(Boolean(biscoito), 'sessão vive num cookie')
+    conferir(biscoito?.httpOnly === true, 'cookie é httpOnly (JavaScript da página não lê)')
+    const diasDeCookie = (biscoito.expires * 1000 - Date.now()) / 86400000
+    conferir(
+      diasDeCookie > 300,
+      `cookie fica no aparelho por ${Math.round(diasDeCookie)} dias (não some ao fechar o navegador)`
+    )
+
+    // fechar e reabrir o navegador não pode deslogar
+    const paginaNova = await celularNovo.newPage()
+    await paginaNova.goto(`${BASE}/meus-pedidos`, { waitUntil: 'networkidle' })
+    await paginaNova.waitForTimeout(1500)
+    conferir(
+      await paginaNova.getByText(/Entrou como|Entrou com/).isVisible(),
+      'abrir de novo mais tarde continua logado'
+    )
+    await paginaNova.close()
+
+    // janela deslizante: quem usa nunca vence
+    const antes = await sql(
+      `select expira_em from public.sessoes_cliente order by criado_em desc limit 1;`
+    )
+    await sql(
+      `update public.sessoes_cliente set ultimo_acesso = now() - interval '2 days',
+       expira_em = now() + interval '30 days';`
+    )
+    await outro.goto(`${BASE}/meus-pedidos`, { waitUntil: 'networkidle' })
+    await outro.waitForTimeout(1800)
+    const depois = await sql(
+      `select expira_em from public.sessoes_cliente order by criado_em desc limit 1;`
+    )
+    const venceEm = (novo) =>
+      (new Date(novo?.[0]?.expira_em ?? 0).getTime() - Date.now()) / 86400000
+    conferir(
+      venceEm(depois) > 80,
+      `visitar empurra o vencimento de volta para ${Math.round(venceEm(depois))} dias`
+    )
+    void antes
+
+    // ------------------------------------ 5d. link mágico do WhatsApp
+    console.log('\n5d) Link mágico que vem na confirmação')
+    const tokenBom = 'token-de-teste-' + pedidoId.slice(0, 8)
+    const hashBom = createHash('sha256').update(tokenBom).digest('hex')
+    await sql(
+      `insert into public.codigos_acesso (telefone, tipo, codigo_hash, expira_em)
+       values ('71988886666', 'link', '${hashBom}', now() + interval '30 days');`
+    )
+
+    const celularDoLink = await navegador.newContext({ viewport: { width: 420, height: 900 } })
+    const comLink = await celularDoLink.newPage()
+
+    await comLink.goto(`${BASE}/entrar/link?t=naoexiste`, { waitUntil: 'networkidle' })
+    await comLink.waitForTimeout(600)
+    conferir(await comLink.getByText('Link vencido').isVisible(), 'token inventado não entra')
+
+    // o WhatsApp abre o link sozinho para montar a previa; isso NAO pode gastar
+    await comLink.goto(`${BASE}/entrar/link?t=${tokenBom}`, { waitUntil: 'networkidle' })
+    await comLink.waitForTimeout(600)
+    await comLink.goto(`${BASE}/entrar/link?t=${tokenBom}`, { waitUntil: 'networkidle' })
+    await comLink.waitForTimeout(600)
+    conferir(
+      await comLink.getByText('É você mesmo?').isVisible(),
+      'só abrir o link não gasta o token (robô de prévia não estraga)'
+    )
+    conferir(
+      await comLink.getByText(/\(71\) 98888-6666/).isVisible(),
+      'a tela diz de qual WhatsApp é a conta antes de entrar'
+    )
+    await comLink.screenshot({ path: `${TIROS}/mp-07-link-magico.png`, fullPage: true })
+
+    await comLink.getByRole('button', { name: /Sim, entrar/ }).click()
+    await comLink.waitForURL('**/meus-pedidos', { timeout: 20000 })
+    await comLink.waitForTimeout(1800)
+    conferir(
+      await comLink.getByText(/Entrou como|Entrou com/).isVisible(),
+      'um toque no link entra na conta, sem digitar nada'
+    )
+    conferir(
+      await comLink.getByText('Cocada baiana').first().isVisible(),
+      'histórico aparece direto pelo link'
+    )
+
+    await comLink.goto(`${BASE}/entrar/link?t=${tokenBom}`, { waitUntil: 'networkidle' })
+    await comLink.waitForTimeout(800)
+    conferir(
+      await comLink.getByText('Link vencido').isVisible(),
+      'link mágico serve uma vez só'
+    )
+    await celularDoLink.close()
 
     // sair de verdade: a sessão morre no banco, não só no navegador
     await outro.goto(`${BASE}/meus-pedidos`, { waitUntil: 'networkidle' })

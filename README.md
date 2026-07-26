@@ -143,6 +143,20 @@ alguém veria o nome, o endereço de entrega e tudo que a pessoa já comprou. C�
 minutos, uma vez só, no máximo 5 tentativas; o banco guarda apenas o hash dele e o hash do
 token da sessão (`src/lib/cliente-sessao.ts`).
 
+**E entra uma vez só.** A sessão é uma janela deslizante: cada visita empurra o vencimento 90
+dias para frente, então quem pede de vez em quando nunca mais vê tela de login — some só quem
+sumiu por 3 meses. O cookie vai no teto que o navegador aceita (400 dias) e quem manda no prazo
+é o banco, porque página renderizada no servidor não pode reescrever cookie. Melhor ainda: a
+confirmação no WhatsApp leva um **link mágico** — um toque e a pessoa está logada, sem digitar
+nada. Ele é conferido sem ser gasto ao abrir (o WhatsApp visita todo link para montar a
+pré-visualização) e só é consumido no clique do botão.
+
+**Dá para instalar na tela de início.** O `app/manifest.ts` faz o site virar ícone no celular.
+Não é enfeite: o Safari do iPhone joga fora cookie e storage de site que a pessoa não abre há
+alguns dias, e junto vai a sessão. Instalado, o site ganha armazenamento próprio. Quem já entrou
+vê um convite discreto para fazer isso, com o passo a passo certo para iPhone e o botão nativo
+no Android.
+
 **RLS fechado por padrão.** A chave anônima só lê o cardápio. Pedidos, cupons e configurações
 são escritos por server actions com `service_role`, e cada uma delas chama `exigirAdmin()` —
 o `proxy.ts` é a primeira tranca, não a única.

@@ -80,7 +80,9 @@ type DadosAviso = Pick<
 export async function avisarPedidoConfirmado(
   pedido: DadosAviso,
   nomeLoja: string,
-  urlAcompanhamento: string
+  urlAcompanhamento: string,
+  /** Link mágico: entra na conta sem digitar nada. Opcional de propósito. */
+  urlAcesso?: string | null
 ) {
   const entrega = pedido.tipo_entrega === 'entrega'
   const hora = horaCurta(pedido.retirada_prevista)
@@ -101,6 +103,10 @@ export async function avisarPedidoConfirmado(
     ``,
     `Acompanhe por aqui:`,
     urlAcompanhamento,
+    // Um toque e o cliente está logado, para sempre. Sem senha, sem cadastro.
+    ...(urlAcesso
+      ? ['', `Para ver seus pedidos quando quiser, é só tocar aqui:`, urlAcesso]
+      : []),
   ]
 
   return enviarTexto(pedido.cliente_telefone, linhas.filter((l) => l !== null).join('\n'))
