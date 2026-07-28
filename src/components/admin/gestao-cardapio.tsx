@@ -213,6 +213,10 @@ function LinhaProduto({
             {produto.nome}
           </span>
           {produto.destaque && <Selo tom="vermelho">Destaque</Selo>}
+          {/* Só marca quando o item NÃO está nos dois cardápios: "aparece em
+              todo lugar" é o normal e não merece ruído na lista. */}
+          {produto.modo_consumo === 'so_local' && <Selo tom="ambar">Só no restaurante</Selo>}
+          {produto.modo_consumo === 'so_viagem' && <Selo tom="ambar">Só para viagem</Selo>}
         </p>
         <p className="text-sm text-tinta-500 tabular-nums">
           {emPromocao ? (

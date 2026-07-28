@@ -1,6 +1,7 @@
 import { cookies } from 'next/headers'
 import { NextResponse, type NextRequest } from 'next/server'
 import { criarClienteAdmin } from '@/lib/supabase/server'
+import { urlBase } from '@/lib/mercadopago'
 import { COOKIE_MESA, COOKIE_MODO, VALIDADE_MODO_SEGUNDOS } from '@/lib/modo'
 
 /**
@@ -35,5 +36,17 @@ export async function GET(
     armazem.delete(COOKIE_MESA)
   }
 
-  return NextResponse.redirect(new URL('/', _request.url))
+  /*
+   * O destino NÃO pode sair de `request.url`.
+   *
+   * Atrás do proxy do EasyPanel o app enxerga o próprio endereço interno, e
+   * `new URL('/', request.url)` virava `https://0.0.0.0:3000/` — ou seja, o
+   * QR colado na mesa levava o cliente a lugar nenhum. Em desenvolvimento
+   * isso dava `localhost:3000` e funcionava, que foi o que escondeu o
+   * problema até alguém ler o QR de verdade em produção.
+   *
+   * urlBase() usa o endereço configurado da loja e, na falta dele, os
+   * cabeçalhos que o proxy manda.
+   */
+  return NextResponse.redirect(new URL('/', await urlBase()))
 }

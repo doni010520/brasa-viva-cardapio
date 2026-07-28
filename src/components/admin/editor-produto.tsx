@@ -40,6 +40,7 @@ export function EditorProduto({
   const [disponivel, setDisponivel] = useState(produto?.disponivel ?? true)
   const [destaque, setDestaque] = useState(produto?.destaque ?? false)
   const [ordem, setOrdem] = useState(String(produto?.ordem ?? 0))
+  const [modoConsumo, setModoConsumo] = useState(produto?.modo_consumo ?? 'ambos')
 
   function enviar(evento: React.FormEvent) {
     evento.preventDefault()
@@ -58,6 +59,7 @@ export function EditorProduto({
         disponivel,
         destaque,
         ordem,
+        modo_consumo: modoConsumo,
       })
 
       if (!resposta.ok) {
@@ -177,6 +179,28 @@ export function EditorProduto({
                 onChange={(e) => setOrdem(e.target.value)}
               />
             </div>
+          </div>
+
+          {/* São dois cardápios diferentes: quem está na mesa não pode pedir
+              marmita embalada, e quem está em casa não pode pedir buffet. */}
+          <div>
+            <Rotulo htmlFor="modo-consumo">Em qual cardápio aparece</Rotulo>
+            <Selecao
+              id="modo-consumo"
+              value={modoConsumo}
+              onChange={(e) => setModoConsumo(e.target.value as typeof modoConsumo)}
+            >
+              <option value="ambos">Nos dois — no restaurante e para viagem</option>
+              <option value="so_local">Só no restaurante (buffet, consumo no salão)</option>
+              <option value="so_viagem">Só para viagem (marmita, entrega e retirada)</option>
+            </Selecao>
+            <p className="mt-1 text-xs text-tinta-400">
+              {modoConsumo === 'so_local'
+                ? 'Não aparece para quem pede de casa — ninguém vai levar buffet livre embora.'
+                : modoConsumo === 'so_viagem'
+                  ? 'Não aparece para quem está sentado no salão.'
+                  : 'Aparece para todo mundo, esteja no salão ou pedindo de casa.'}
+            </p>
           </div>
 
           <div className="flex flex-wrap gap-5 pt-1">

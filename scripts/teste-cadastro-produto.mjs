@@ -88,6 +88,13 @@ try {
   await pagina.getByLabel('Preço (R$)').fill('42,50')
   await pagina.getByLabel('Preço promocional (opcional)').fill('35,90')
 
+  // Dois cardápios diferentes: o dono precisa dizer em qual o item entra.
+  await pagina.getByLabel('Em qual cardápio aparece').selectOption('so_viagem')
+  conferir(
+    await pagina.getByText(/Não aparece para quem está sentado no salão/).isVisible(),
+    'a tela explica o que a escolha faz'
+  )
+
   // envia a foto
   await pagina.setInputFiles('input[type="file"]', arquivoFoto)
   await pagina.waitForTimeout(4000)
@@ -102,12 +109,16 @@ try {
 
   const criado = (
     await sql(
-      `select id, nome, preco_centavos, preco_promo_centavos, imagem_url, disponivel
+      `select id, nome, preco_centavos, preco_promo_centavos, imagem_url, disponivel, modo_consumo
          from public.produtos where nome = '${NOME_TESTE}';`
     )
   )[0]
 
   conferir(Boolean(criado), 'produto gravado no banco')
+  conferir(
+    criado?.modo_consumo === 'so_viagem',
+    `o cardápio escolhido foi gravado (${criado?.modo_consumo})`
+  )
   conferir(criado?.preco_centavos === 4250, `preço salvo em centavos: ${criado?.preco_centavos}`)
   conferir(
     criado?.preco_promo_centavos === 3590,

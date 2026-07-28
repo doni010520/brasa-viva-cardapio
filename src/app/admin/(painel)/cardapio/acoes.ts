@@ -105,6 +105,14 @@ const esquemaProduto = z.object({
   disponivel: z.boolean(),
   destaque: z.boolean(),
   ordem: z.coerce.number().int().min(0).max(999),
+  /**
+   * Em qual dos dois cardápios o item aparece.
+   *
+   * São cardápios diferentes de verdade: buffet livre só existe para quem
+   * está sentado no salão, e marmita embalada só faz sentido para quem vai
+   * levar. Oferecer o item errado dá pedido que a casa não consegue entregar.
+   */
+  modo_consumo: z.enum(['ambos', 'so_local', 'so_viagem']),
 })
 
 export async function salvarProdutoAction(entrada: unknown): Promise<Resposta<{ id: string }>> {

@@ -62,6 +62,25 @@ const pagina = await contexto.newPage()
 try {
   // ---------------------------------------------- 1. o QR da mesa
   console.log('\n1) QR Code da mesa')
+
+  /*
+   * Para onde o servidor MANDA, antes de o navegador seguir.
+   *
+   * Isto existe por causa de um bug que só aparecia em produção: o destino
+   * era montado a partir do endereço da requisição, e atrás do proxy isso
+   * virava `https://0.0.0.0:3000/` — o QR colado na mesa não levava a lugar
+   * nenhum. Em desenvolvimento dava `localhost:3000` e passava despercebido.
+   *
+   * A asserção compara com a URL pública configurada, que é o que vale nos
+   * dois ambientes.
+   */
+  const desvio = await pagina.request.get(`${BASE}/mesa/7`, { maxRedirects: 0 })
+  const destino = desvio.headers()['location'] ?? ''
+  conferir(
+    destino === `${env.NEXT_PUBLIC_URL_BASE.replace(/\/$/, '')}/`,
+    `o redirect do QR aponta para a loja, não para o endereço interno (${destino})`
+  )
+
   await pagina.goto(`${BASE}/mesa/7`, { waitUntil: 'networkidle' })
   await pagina.waitForTimeout(800)
 
