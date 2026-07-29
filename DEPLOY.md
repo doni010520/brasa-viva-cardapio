@@ -104,7 +104,9 @@ O cliente entra no histórico dele com um código de 6 dígitos que chega no Wha
 Enquanto a uazapi **não** estiver conectada, esse código não tem como sair — então, só
 para a demonstração, adicione:
 
-
+```
+PERMITIR_CODIGO_NA_TELA=1
+```
 
 ⚠️ Ligada, ela derruba a proteção: qualquer pessoa digita o número de outra e vê o
 histórico dela. **Apague no dia em que a loja abrir para o público.** Preenchendo
@@ -231,6 +233,51 @@ No PC do restaurante:
 Detalhes em [agente-impressao/README.md](agente-impressao/README.md).
 
 ---
+
+## Trocar o domínio
+
+O domínio não está escrito em lugar nenhum do código: tudo sai de
+`NEXT_PUBLIC_URL_BASE`. Trocar é configuração — mas na ordem certa.
+
+1. **DNS, no painel do domínio.** Aponte o registro **A** de `@` para o IP da
+   VPS (o mesmo endereço em que você acessa o EasyPanel). Domínio recém-comprado
+   costuma vir com esse A no IP de estacionamento da registradora — é ele que
+   sai. Mantenha o **CNAME** de `www` apontando para o domínio raiz. Espere
+   propagar antes do passo 2, senão a emissão do certificado falha.
+
+2. **EasyPanel → Domains.** Adicione o domínio e o `www`, porta **3000**,
+   HTTPS ligado.
+
+   ⚠️ **NÃO remova o domínio antigo.** Os QR Codes já colados nas mesas e os
+   links já enviados no WhatsApp apontam para ele. Deixe os dois no ar.
+
+3. **Build Arguments** — é aqui que essa troca costuma dar errado:
+
+   ```
+   NEXT_PUBLIC_URL_BASE=https://SEU-DOMINIO
+   ```
+
+   Atualize **também** no Environment. E **precisa de rebuild**: reiniciar não
+   basta, porque toda `NEXT_PUBLIC_*` é gravada dentro do código no build.
+
+4. **Deploy** e confira em `https://SEU-DOMINIO/api/saude` se `url_base` já é
+   o domínio novo. Se ainda for o antigo, o rebuild não pegou o argumento.
+
+5. **Reimprima os QR das mesas** (*Mesas → imprimir*). Eles são desenhados na
+   hora, então já saem com o domínio novo.
+
+O que muda junto, sem você fazer nada: link de acompanhamento no WhatsApp,
+link que o chatbot manda, links de pagamento e a imagem de prévia do link.
+
+Para conferir de ponta a ponta — ele lê o QR pelos pixels, como uma câmera
+faria, e segue o endereço que sair de lá:
+
+```bash
+node scripts/conferir-qr-mesa.mjs 1 https://SEU-DOMINIO
+```
+
+---
+
 
 ## Atualizar depois
 
