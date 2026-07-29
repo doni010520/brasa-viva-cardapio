@@ -1,5 +1,6 @@
 import { buscarBairros, buscarCardapio, buscarPedido } from '@/lib/dados'
 import { criarClienteAdmin } from '@/lib/supabase/server'
+import { urlBaseConfigurada } from '@/lib/url'
 import { moeda } from '@/lib/format'
 import { rotuloStatus } from '@/lib/types'
 import { salvarConversa, type Conversa } from './estado'
@@ -122,7 +123,7 @@ async function statusDoPedido(conversa: Conversa): Promise<ResultadoFerramenta> 
     .join(', ')
 
   const numero = String(data.numero).padStart(3, '0')
-  const base = process.env.NEXT_PUBLIC_URL_BASE?.replace(/\/$/, '')
+  const base = urlBaseConfigurada()
 
   // guarda qual pedido é: a equipe vê isso no painel, e a próxima pergunta
   // ("e agora?") não precisa procurar de novo

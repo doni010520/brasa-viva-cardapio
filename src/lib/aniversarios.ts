@@ -2,6 +2,7 @@ import { buscarConfiguracoes } from './dados'
 import { criarClienteAdmin } from './supabase/server'
 import { partesNoFuso } from './tempo'
 import { enviarTexto, whatsappConfigurado } from './whatsapp'
+import { urlBaseConfigurada } from '@/lib/url'
 
 /**
  * Parabéns de aniversário pelo WhatsApp.
@@ -53,7 +54,7 @@ export async function enviarParabensDeHoje(): Promise<ResultadoAniversarios> {
     return resultado
   }
 
-  const link = process.env.NEXT_PUBLIC_URL_BASE?.replace(/\/$/, '') ?? ''
+  const link = urlBaseConfigurada()
 
   for (const cliente of aniversariantes) {
     // já mandou este ano, ou a pessoa não quer receber promoção

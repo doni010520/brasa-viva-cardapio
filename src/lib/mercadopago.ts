@@ -1,5 +1,5 @@
 import { MercadoPagoConfig, Payment } from 'mercadopago'
-import { headers } from 'next/headers'
+import { urlBase } from './url'
 
 /**
  * Checkout Transparente do Mercado Pago.
@@ -28,15 +28,8 @@ function cliente() {
 }
 
 /** URL pública do app. Vem do env; em dev cai para o host da requisição. */
-export async function urlBase() {
-  const doEnv = process.env.NEXT_PUBLIC_URL_BASE?.replace(/\/$/, '')
-  if (doEnv) return doEnv
-
-  const h = await headers()
-  const host = h.get('x-forwarded-host') ?? h.get('host') ?? 'localhost:3000'
-  const protocolo = h.get('x-forwarded-proto') ?? (host.startsWith('localhost') ? 'http' : 'https')
-  return `${protocolo}://${host}`
-}
+/** Mora em `./url`; reexportado aqui por causa de quem já importava daqui. */
+export { urlBase }
 
 // ---------------------------------------------------------------- tipos
 

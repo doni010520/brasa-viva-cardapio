@@ -3,6 +3,7 @@ import { PainelAgente } from '@/components/admin/painel-agente'
 import { temIA } from '@/lib/agente/modelo'
 import { buscarConfiguracoes } from '@/lib/dados'
 import { criarClienteAdmin, usuarioAdminAtual } from '@/lib/supabase/server'
+import { urlBaseConfigurada } from '@/lib/url'
 import { whatsappConfigurado } from '@/lib/whatsapp'
 
 export const dynamic = 'force-dynamic'
@@ -31,7 +32,7 @@ export default async function PaginaWhatsapp() {
     .order('atualizado_em', { ascending: false })
     .limit(50)
 
-  const base = process.env.NEXT_PUBLIC_URL_BASE?.replace(/\/$/, '') ?? ''
+  const base = urlBaseConfigurada()
 
   return (
     <>

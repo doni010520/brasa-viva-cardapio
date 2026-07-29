@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next'
 import './globals.css'
+import { urlBaseConfigurada } from '@/lib/url'
 
 /**
  * O Next monta os <link> do ícone sozinho a partir de src/app/icon.png e
@@ -10,7 +11,7 @@ export const metadata: Metadata = {
    * Sem isto, o Next monta og:image relativo — e WhatsApp, Instagram e Google
    * precisam de URL absoluta para buscar a imagem da prévia.
    */
-  metadataBase: new URL(process.env.NEXT_PUBLIC_URL_BASE ?? 'http://localhost:3000'),
+  metadataBase: new URL(urlBaseConfigurada() || 'http://localhost:3000'),
   title: {
     default: 'Churrascaria Brasa Viva — Cardápio',
     template: '%s · Brasa Viva',

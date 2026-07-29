@@ -1,3 +1,4 @@
+import { urlBaseConfigurada } from '@/lib/url'
 /**
  * Sinal de vida e diagnóstico do deploy.
  *
@@ -12,7 +13,7 @@
 export const dynamic = 'force-dynamic'
 
 export async function GET() {
-  const urlBase = process.env.NEXT_PUBLIC_URL_BASE ?? ''
+  const urlBase = urlBaseConfigurada()
 
   return Response.json({
     ok: true,

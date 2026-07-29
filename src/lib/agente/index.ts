@@ -5,6 +5,7 @@ import { FERRAMENTAS, bairrosEmTexto, cardapioEmTexto, executar } from './ferram
 import { abrirConversa, anexarMensagem, salvarConversa, type Conversa } from './estado'
 import { modeloDeIA, type Modelo, type Turno } from './modelo'
 import { modeloSimples } from './modelo-simples'
+import { urlBaseConfigurada } from '@/lib/url'
 
 /**
  * O atendimento pelo WhatsApp.
@@ -104,7 +105,7 @@ async function montarPrompt(conversa: Conversa): Promise<string> {
   // Quem fala pelo WhatsApp está fora do salão: buffet livre não entra.
   const [cardapio, bairros] = await Promise.all([cardapioEmTexto(true), bairrosEmTexto()])
 
-  const link = process.env.NEXT_PUBLIC_URL_BASE?.replace(/\/$/, '') ?? ''
+  const link = urlBaseConfigurada()
 
   const regras = [
     `Você é ${config.agente_nome ?? 'o atendente'}, atendente virtual da ${config.nome} no WhatsApp.`,
@@ -165,7 +166,7 @@ async function contextoSimples(conversa: Conversa) {
 
   return {
     nomeLoja: config.nome,
-    link: process.env.NEXT_PUBLIC_URL_BASE?.replace(/\/$/, '') ?? '',
+    link: urlBaseConfigurada(),
     aberta: loja.aberta,
     motivoFechada: loja.motivo ?? null,
     horarioHoje: loja.horarioHoje
