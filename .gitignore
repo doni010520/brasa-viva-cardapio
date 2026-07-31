@@ -33,6 +33,7 @@ yarn-error.log*
 # env: segredos nunca vão para o git, mas o modelo de configuração vai
 .env*
 !.env.example
+!.env.exemplo
 
 # vercel
 .vercel

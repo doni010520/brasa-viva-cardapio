@@ -109,6 +109,40 @@ conferir(
   fila.length === 1 && fila[0].status === 'pendente',
   `comanda entrou na fila sozinha, sem ninguém pedir (${fila.length} via)`
 )
+conferir(fila[0]?.via === 'salao', `pedido de mesa cai na via do salão (via: ${fila[0]?.via})`)
+
+// pedido de entrega tem que cair na OUTRA via — é o que separa as impressoras
+const entrega = (
+  await sql(`
+    insert into public.pedidos
+      (cliente_nome, cliente_telefone, tipo_entrega, forma_pagamento,
+       status, status_pagamento, subtotal_centavos, total_centavos,
+       endereco_rua, endereco_numero, endereco_bairro, entrega_taxa_centavos)
+    values
+      ('José Raimundo Teste', '71977776666', 'entrega', 'local',
+       'recebido', 'pendente', ${produto.preco_centavos}, ${produto.preco_centavos + 500},
+       'Rua das Laranjeiras', '123', 'Centro', 500)
+    returning id, numero;
+  `)
+)[0]
+
+await sql(`
+  insert into public.pedido_itens
+    (pedido_id, produto_id, produto_nome, quantidade, preco_unit_centavos, total_centavos, opcoes)
+  values
+    ('${entrega.id}', '${produto.id}', '${produto.nome}', 1, ${produto.preco_centavos},
+     ${produto.preco_centavos}, '[]'::jsonb);
+`)
+
+await espera(800)
+
+const filaEntrega = await sql(
+  `select via from public.impressoes where pedido_id = '${entrega.id}';`
+)
+conferir(
+  filaEntrega.length === 1 && filaEntrega[0].via === 'viagem',
+  `pedido de entrega cai na via de viagem (via: ${filaEntrega[0]?.via})`
+)
 
 // ------------------------------------------------------ roda o agente
 console.log('\n3) O agente imprime')
@@ -138,9 +172,17 @@ conferir(
   saidaAgente.includes(`Pedido #${String(pedido.numero).padStart(3, '0')} impresso`),
   `agente relatou a impressão do pedido #${String(pedido.numero).padStart(3, '0')}`
 )
+conferir(
+  saidaAgente.includes(`Pedido #${String(entrega.numero).padStart(3, '0')} impresso`),
+  `agente relatou a impressão da entrega #${String(entrega.numero).padStart(3, '0')}`
+)
 
 const arquivos = (await readdir(SAIDA)).filter((n) => n.endsWith('.bin'))
-conferir(arquivos.length === 1, `comanda gravada (${arquivos.length} arquivo)`)
+conferir(arquivos.length === 2, `comandas gravadas (${arquivos.length} arquivos)`)
+conferir(
+  arquivos.some((n) => n.endsWith('-salao.bin')) && arquivos.some((n) => n.endsWith('-viagem.bin')),
+  'cada comanda saiu marcada com a via dela (salao e viagem)'
+)
 
 const depois = await sql(
   `select status, impresso_em from public.impressoes where pedido_id = '${pedido.id}';`
@@ -152,7 +194,10 @@ conferir(
 
 // ------------------------------------------------ o cupom está correto?
 console.log('\n4) O que saiu no papel')
-const bytes = await readFile(join(SAIDA, arquivos[0]))
+const cupomMesa = arquivos.find((n) =>
+  n.startsWith(`comanda-${String(pedido.numero).padStart(3, '0')}`)
+)
+const bytes = await readFile(join(SAIDA, cupomMesa))
 const texto = bytes.toString('latin1')
 
 conferir(bytes[0] === 0x1b && bytes[1] === 0x40, 'cupom começa com o comando de inicializar')

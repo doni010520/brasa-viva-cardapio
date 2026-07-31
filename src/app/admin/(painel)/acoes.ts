@@ -90,9 +90,20 @@ export async function reimprimirAction(pedidoId: string): Promise<Resposta> {
   }
 
   const supabase = criarClienteAdmin()
+
+  // a reimpressão sai na mesma impressora da comanda original
+  const { data: pedido } = await supabase
+    .from('pedidos')
+    .select('tipo_entrega')
+    .eq('id', pedidoId)
+    .maybeSingle()
+
+  if (!pedido) return { ok: false, erro: 'Pedido não encontrado.' }
+
+  const via = pedido.tipo_entrega === 'local' ? 'salao' : 'viagem'
   const { error } = await supabase
     .from('impressoes')
-    .insert({ pedido_id: pedidoId, via: 'cozinha' })
+    .insert({ pedido_id: pedidoId, via })
 
   if (error) return { ok: false, erro: 'Não consegui enfileirar a impressão.' }
 

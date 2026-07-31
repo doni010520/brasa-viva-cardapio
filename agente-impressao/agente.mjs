@@ -54,10 +54,22 @@ const erro = (m) => console.error(`[${agora()}] ERRO: ${m}`)
 
 // ------------------------------------------------------------ impressoras
 
+/**
+ * Cada comanda chega com um destino ("via"): 'viagem' para entrega/retirada,
+ * 'salao' para pedidos de mesa. Se o .env tiver IMPRESSORA_VIA_VIAGEM ou
+ * IMPRESSORA_VIA_SALAO, a via sai na impressora indicada; sem o mapa, tudo
+ * cai na impressora padrão — via nova ou antiga nunca deixa de imprimir.
+ */
+function impressoraDaVia(via) {
+  return cfg[`IMPRESSORA_VIA_${String(via || '').toUpperCase()}`] || null
+}
+
 /** Impressora ligada na rede (a maioria das térmicas usa a porta 9100). */
-function imprimirNaRede(bytes) {
-  const host = cfg.IMPRESSORA_HOST
-  const porta = Number(cfg.IMPRESSORA_PORTA || 9100)
+function imprimirNaRede(bytes, alvo) {
+  // o mapa da via aceita "192.168.0.50" ou "192.168.0.50:9100"
+  const [hostDaVia, portaDaVia] = (alvo || '').split(':')
+  const host = hostDaVia || cfg.IMPRESSORA_HOST
+  const porta = Number(portaDaVia || cfg.IMPRESSORA_PORTA || 9100)
   if (!host) throw new Error('IMPRESSORA_HOST não configurado')
 
   return new Promise((resolve, reject) => {
@@ -77,8 +89,8 @@ function imprimirNaRede(bytes) {
  * Impressora instalada no Windows (USB ou compartilhada).
  * Manda os bytes crus com `copy /b`, que é o jeito que funciona sem driver.
  */
-async function imprimirNoWindows(bytes) {
-  const nome = cfg.IMPRESSORA_NOME
+async function imprimirNoWindows(bytes, alvo) {
+  const nome = alvo || cfg.IMPRESSORA_NOME
   if (!nome) throw new Error('IMPRESSORA_NOME não configurado')
 
   const arquivo = join(tmpdir(), `comanda-${Date.now()}.bin`)
@@ -141,10 +153,11 @@ function textoLegivel(bytes) {
 }
 
 /** Só escreve em arquivo. Serve para testar sem impressora nenhuma. */
-async function imprimirEmArquivo(bytes, id) {
+async function imprimirEmArquivo(bytes, id, via) {
   const pasta = cfg.PASTA_SAIDA || aqui
-  const bin = join(pasta, `comanda-${id}.bin`)
-  const txt = join(pasta, `comanda-${id}.txt`)
+  const sufixo = via ? `-${via}` : ''
+  const bin = join(pasta, `comanda-${id}${sufixo}.bin`)
+  const txt = join(pasta, `comanda-${id}${sufixo}.txt`)
 
   await writeFile(bin, Buffer.from(bytes))
   await writeFile(txt, textoLegivel(bytes), 'utf8')
@@ -156,10 +169,11 @@ async function imprimirEmArquivo(bytes, id) {
   }
 }
 
-async function imprimir(bytes, id) {
-  if (TIPO === 'rede') return imprimirNaRede(bytes)
-  if (TIPO === 'arquivo') return imprimirEmArquivo(bytes, id)
-  return imprimirNoWindows(bytes)
+async function imprimir(bytes, id, via) {
+  const alvo = impressoraDaVia(via)
+  if (TIPO === 'rede') return imprimirNaRede(bytes, alvo)
+  if (TIPO === 'arquivo') return imprimirEmArquivo(bytes, id, via)
+  return imprimirNoWindows(bytes, alvo)
 }
 
 // ------------------------------------------------------------ laço principal
@@ -204,8 +218,9 @@ async function rodada() {
   for (const comanda of comandas) {
     const bytes = Buffer.from(comanda.escpos, 'base64')
     try {
-      await imprimir(bytes, comanda.pedido)
-      log(`Pedido #${comanda.pedido} impresso (${comanda.via})`)
+      await imprimir(bytes, comanda.pedido, comanda.via)
+      const alvo = impressoraDaVia(comanda.via)
+      log(`Pedido #${comanda.pedido} impresso (${comanda.via}${alvo ? ` → ${alvo}` : ''})`)
       resultados.push({ id: comanda.id, ok: true })
     } catch (e) {
       erro(`pedido #${comanda.pedido}: ${e.message}`)
@@ -221,6 +236,9 @@ console.log('  Agente de impressão — Churrascaria Brasa Viva')
 console.log('======================================================')
 console.log(`  Sistema...: ${URL_BASE}`)
 console.log(`  Impressora: ${TIPO}${TIPO === 'rede' ? ` (${cfg.IMPRESSORA_HOST}:${cfg.IMPRESSORA_PORTA || 9100})` : TIPO === 'windows' ? ` (${cfg.IMPRESSORA_NOME})` : ''}`)
+for (const chave of Object.keys(cfg).filter((c) => c.startsWith('IMPRESSORA_VIA_'))) {
+  console.log(`  Via ${chave.slice('IMPRESSORA_VIA_'.length).toLowerCase()}: ${cfg[chave]}`)
+}
 console.log(`  Verificando a cada ${INTERVALO / 1000}s`)
 console.log('  Deixe esta janela aberta. Ctrl+C para parar.')
 console.log('======================================================\n')

@@ -31,6 +31,28 @@ atualizar este programa.
 Uma janela preta abre e fica escrito *"Deixe esta janela aberta"*. É isso: a
 partir daí, todo pedido novo sai impresso sozinho.
 
+## Duas impressoras: delivery numa, salão na outra
+
+Cada comanda já chega com um destino, decidido pelo sistema:
+
+| Via | Que pedidos | Exemplo de impressora |
+|---|---|---|
+| `viagem` | entrega e retirada | a térmica do balcão/expedição |
+| `salao` | pedidos de mesa | a térmica da cozinha |
+
+Com **uma impressora só**, não configure nada: as duas vias saem nela.
+
+Com **duas no mesmo PC**, instale e compartilhe cada uma com um nome
+(ex.: `I7PLUS` e `COZINHA`) e acrescente no `.env`:
+
+```
+IMPRESSORA_VIA_VIAGEM=I7PLUS
+IMPRESSORA_VIA_SALAO=COZINHA
+```
+
+Via sem mapa cai na impressora padrão (`IMPRESSORA_NOME`) — comanda
+nunca fica sem sair por falta de configuração.
+
 ## Testar sem impressora
 
 No `.env`, use:
