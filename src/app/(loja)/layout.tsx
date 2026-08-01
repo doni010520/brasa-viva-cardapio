@@ -69,18 +69,40 @@ export default async function LayoutLoja({ children }: { children: React.ReactNo
         <footer className="border-t border-tinta-200 bg-white px-4 py-8 text-sm text-tinta-500">
           <div className="mx-auto max-w-3xl space-y-2">
             <p className="font-semibold text-tinta-700">{config.nome}</p>
-            {config.endereco && (
-              <p className="flex items-center gap-2">
-                <MapPin className="h-4 w-4 shrink-0" />
-                {config.endereco}
-              </p>
-            )}
-            {config.telefone && (
-              <p className="flex items-center gap-2">
-                <Phone className="h-4 w-4 shrink-0" />
-                {config.telefone}
-              </p>
-            )}
+            {config.endereco &&
+              (config.endereco_url ? (
+                <a
+                  href={config.endereco_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-center gap-2 font-medium text-tinta-600 hover:text-tinta-900"
+                >
+                  <MapPin className="h-4 w-4 shrink-0" />
+                  {config.endereco}
+                </a>
+              ) : (
+                <p className="flex items-center gap-2">
+                  <MapPin className="h-4 w-4 shrink-0" />
+                  {config.endereco}
+                </p>
+              ))}
+            {config.telefone &&
+              (config.whatsapp ? (
+                <a
+                  href={`https://wa.me/${config.whatsapp.replace(/\D/g, '')}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-center gap-2 font-medium text-tinta-600 hover:text-tinta-900"
+                >
+                  <Phone className="h-4 w-4 shrink-0" />
+                  {config.telefone}
+                </a>
+              ) : (
+                <p className="flex items-center gap-2">
+                  <Phone className="h-4 w-4 shrink-0" />
+                  {config.telefone}
+                </p>
+              ))}
             {config.instagram_url && (
               <a
                 href={config.instagram_url}

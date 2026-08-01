@@ -54,6 +54,8 @@ export type Configuracoes = {
   telefone: string | null
   whatsapp: string | null
   endereco: string | null
+  /** Link do Google Maps: transforma a linha de endereço do rodapé em link. */
+  endereco_url: string | null
   aberto_manual: boolean
   tempo_preparo_min: number
   /** Agente de IA que atende pelo WhatsApp. Nasce desligado. */

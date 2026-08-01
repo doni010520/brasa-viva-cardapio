@@ -16,6 +16,13 @@ const esquemaConfig = z.object({
   telefone: z.string().trim().max(20).optional(),
   whatsapp: z.string().trim().max(20).optional(),
   endereco: z.string().trim().max(200).optional(),
+  // links do Google Maps vêm compridos, com dezenas de parâmetros — o teto é largo
+  endereco_url: z
+    .string()
+    .trim()
+    .max(600)
+    .optional()
+    .refine((v) => !v || /^https?:\/\//i.test(v), 'O link do endereço precisa começar com https://'),
   tempo_preparo_min: z.coerce.number().int().min(0).max(480),
   antecedencia_min: z.coerce.number().int().min(0).max(480),
   pedido_minimo_centavos: z.coerce.number().int().min(0).max(100_000_00),
@@ -83,6 +90,7 @@ export async function salvarConfiguracoesAction(entrada: unknown): Promise<Respo
       telefone: dados.telefone || null,
       whatsapp: dados.whatsapp || null,
       endereco: dados.endereco || null,
+      endereco_url: dados.endereco_url || null,
       chave_pix: dados.chave_pix || null,
       entrega_gratis_acima_centavos: dados.entrega_gratis_acima_centavos || null,
       instagram_url: dados.instagram_url || null,

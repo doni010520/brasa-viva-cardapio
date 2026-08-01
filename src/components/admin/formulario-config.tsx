@@ -87,6 +87,7 @@ function BlocoLoja({
     telefone: config.telefone ?? '',
     whatsapp: config.whatsapp ?? '',
     endereco: config.endereco ?? '',
+    endereco_url: config.endereco_url ?? '',
     tempo_preparo_min: String(config.tempo_preparo_min),
     antecedencia_min: String(config.antecedencia_min),
     pedido_minimo: centavosParaInput(config.pedido_minimo_centavos),
@@ -214,6 +215,19 @@ function BlocoLoja({
             onChange={(e) => mudar('endereco', e.target.value)}
             placeholder="Rua, número, bairro"
           />
+        </div>
+
+        <div>
+          <Rotulo htmlFor="endereco_url">Link do endereço no Google Maps</Rotulo>
+          <Campo
+            id="endereco_url"
+            value={campos.endereco_url}
+            onChange={(e) => mudar('endereco_url', e.target.value)}
+            placeholder="https://www.google.com/maps/..."
+          />
+          <p className="mt-1 text-xs text-tinta-400">
+            Com o link preenchido, o endereço no rodapé do site vira um atalho para o mapa.
+          </p>
         </div>
 
         <hr className="border-tinta-200" />
