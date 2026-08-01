@@ -7,6 +7,7 @@ import {
   salvarHorariosAction,
 } from '@/app/admin/(painel)/config/acoes'
 import { GestaoBairros } from '@/components/admin/gestao-bairros'
+import { EstadoDoFormulario, useNaoSalvo } from '@/components/admin/nao-salvo'
 import { AreaTexto, Botao, Campo, Cartao, Rotulo } from '@/components/ui'
 import { centavosParaInput, mascaraTelefone, paraCentavos } from '@/lib/format'
 import type { Bairro, Configuracoes, Horario } from '@/lib/types'
@@ -110,6 +111,8 @@ function BlocoLoja({
     campanha_emoji: config.campanha_emoji ?? '🍫',
   })
 
+  const { pendente, marcarSalvo } = useNaoSalvo(campos)
+
   function mudar<C extends keyof typeof campos>(chave: C, valor: (typeof campos)[C]) {
     setCampos((atuais) => ({ ...atuais, [chave]: valor }))
   }
@@ -128,7 +131,10 @@ function BlocoLoja({
           : null,
       })
       if (!resposta.ok) setErro(resposta.erro)
-      else setAviso('Configurações salvas.')
+      else {
+        marcarSalvo()
+        setAviso('Configurações salvas.')
+      }
     })
   }
 
@@ -536,10 +542,9 @@ function BlocoLoja({
           </div>
         )}
 
-        {erro && <p className="text-sm font-medium text-marca-600">{erro}</p>}
-        {aviso && <p className="text-sm font-medium text-emerald-700">{aviso}</p>}
+        <EstadoDoFormulario pendente={pendente} aviso={aviso} erro={erro} />
 
-        <Botao type="submit" disabled={salvando} className="h-11 w-full">
+        <Botao type="submit" disabled={salvando || !pendente} className="h-11 w-full">
           {salvando && <Loader2 className="h-4 w-4 animate-spin" />}
           Salvar configurações
         </Botao>
@@ -564,6 +569,8 @@ function BlocoHorarios({ horarios }: { horarios: Horario[] }) {
     })
   )
 
+  const { pendente, marcarSalvo } = useNaoSalvo(linhas)
+
   function mudar(dia: number, campo: 'fechado' | 'abre' | 'fecha', valor: boolean | string) {
     setLinhas((atuais) =>
       atuais.map((l) => (l.dia_semana === dia ? { ...l, [campo]: valor } : l))
@@ -577,7 +584,10 @@ function BlocoHorarios({ horarios }: { horarios: Horario[] }) {
     salvar(async () => {
       const resposta = await salvarHorariosAction(linhas)
       if (!resposta.ok) setErro(resposta.erro)
-      else setAviso('Horários salvos.')
+      else {
+        marcarSalvo()
+        setAviso('Horários salvos.')
+      }
     })
   }
 
@@ -634,10 +644,9 @@ function BlocoHorarios({ horarios }: { horarios: Horario[] }) {
           Fecha depois da meia-noite? Coloque, por exemplo, 18:00 às 02:00 — o sistema entende.
         </p>
 
-        {erro && <p className="text-sm font-medium text-marca-600">{erro}</p>}
-        {aviso && <p className="text-sm font-medium text-emerald-700">{aviso}</p>}
+        <EstadoDoFormulario pendente={pendente} aviso={aviso} erro={erro} />
 
-        <Botao type="submit" disabled={salvando} className="h-11 w-full">
+        <Botao type="submit" disabled={salvando || !pendente} className="h-11 w-full">
           {salvando && <Loader2 className="h-4 w-4 animate-spin" />}
           Salvar horários
         </Botao>

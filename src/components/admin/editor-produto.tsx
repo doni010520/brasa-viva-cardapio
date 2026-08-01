@@ -24,6 +24,7 @@ import {
   salvarOpcaoAction,
   salvarProdutoAction,
 } from '@/app/admin/(painel)/cardapio/acoes'
+import { EstadoDoFormulario, useNaoSalvo } from '@/components/admin/nao-salvo'
 import { AreaTexto, Botao, Campo, Cartao, Rotulo, Selecao } from '@/components/ui'
 import { centavosParaInput, moeda, paraCentavos } from '@/lib/format'
 import type { GrupoOpcoes, Produto } from '@/lib/types'
@@ -52,6 +53,19 @@ export function EditorProduto({
   const [destaque, setDestaque] = useState(produto?.destaque ?? false)
   const [ordem, setOrdem] = useState(String(produto?.ordem ?? 0))
   const [modoConsumo, setModoConsumo] = useState(produto?.modo_consumo ?? 'ambos')
+
+  const { pendente, marcarSalvo } = useNaoSalvo({
+    categoriaId,
+    nome,
+    descricao,
+    preco,
+    precoPromo,
+    imagemUrl,
+    disponivel,
+    destaque,
+    ordem,
+    modoConsumo,
+  })
 
   function enviar(evento: React.FormEvent) {
     evento.preventDefault()
@@ -84,6 +98,7 @@ export function EditorProduto({
         return
       }
 
+      marcarSalvo()
       setAviso('Alterações salvas.')
       router.refresh()
     })
@@ -242,11 +257,20 @@ export function EditorProduto({
             <SeletorImagem url={imagemUrl} onMudar={setImagemUrl} onErro={setErro} />
           </Cartao>
 
-          <Cartao className="p-4">
-            {erro && <p className="mb-3 text-sm font-medium text-marca-600">{erro}</p>}
-            {aviso && <p className="mb-3 text-sm font-medium text-emerald-700">{aviso}</p>}
+          <Cartao className="space-y-3 p-4">
+            <EstadoDoFormulario
+              pendente={pendente}
+              aviso={aviso}
+              erro={erro}
+              // produto novo ainda não existe no banco: "tudo salvo" mentiria
+              mostrarTudoSalvo={produto !== null}
+            />
 
-            <Botao type="submit" disabled={salvando} className="h-11 w-full">
+            <Botao
+              type="submit"
+              disabled={salvando || (produto !== null && !pendente)}
+              className="h-11 w-full"
+            >
               {salvando && <Loader2 className="h-4 w-4 animate-spin" />}
               {produto ? 'Salvar alterações' : 'Criar produto'}
             </Botao>
