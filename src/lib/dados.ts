@@ -60,7 +60,7 @@ export async function buscarCardapio(
       categoriasQuery,
       supabase
         .from('produtos')
-        .select('*, grupos_opcoes(*, opcoes(*))')
+        .select('*, grupos_opcoes(*, opcoes(*)), secoes_opcoes(*)')
         .order('ordem')
         .order('ordem', { referencedTable: 'grupos_opcoes' }),
     ])
@@ -97,7 +97,7 @@ export async function buscarProduto(id: string): Promise<Produto | null> {
   const supabase = criarClienteAdmin()
   const { data } = await supabase
     .from('produtos')
-    .select('*, grupos_opcoes(*, opcoes(*))')
+    .select('*, grupos_opcoes(*, opcoes(*)), secoes_opcoes(*)')
     .eq('id', id)
     .maybeSingle()
   if (!data) return null

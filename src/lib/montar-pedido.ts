@@ -1,5 +1,5 @@
 import { criarClienteAdmin } from './supabase/server'
-import type { GrupoOpcoes, OpcaoEscolhida, Produto } from './types'
+import type { GrupoOpcoes, OpcaoEscolhida, Produto, SecaoOpcoes } from './types'
 
 export type ItemEnviado = {
   produtoId: string
@@ -36,7 +36,7 @@ export async function conferirItens(itens: ItemEnviado[]): Promise<ConferenciaOk
 
   const { data, error } = await supabase
     .from('produtos')
-    .select('*, grupos_opcoes(*, opcoes(*))')
+    .select('*, grupos_opcoes(*, opcoes(*)), secoes_opcoes(*)')
     .in('id', ids)
 
   if (error) return { ok: false, erro: 'Não consegui conferir o cardápio agora.' }
@@ -90,6 +90,28 @@ export async function conferirItens(itens: ItemEnviado[]): Promise<ConferenciaOk
     const validos = new Set(grupos.flatMap((g) => g.opcoes.map((o) => o.id)))
     if (item.opcaoIds.some((id) => !validos.has(id))) {
       return { ok: false, erro: `Opção inválida em "${produto.nome}".` }
+    }
+
+    // Regra da seção: o total escolhido no CONJUNTO de grupos dela.
+    // É o que impede o marmitex de sair sem carne — ou com quatro.
+    const secoes: SecaoOpcoes[] = produto.secoes_opcoes ?? []
+    for (const secao of secoes) {
+      const total = grupos
+        .filter((g) => g.secao_id === secao.id)
+        .reduce((soma, g) => soma + g.opcoes.filter((o) => escolhidos.has(o.id)).length, 0)
+
+      if (total < secao.min_escolhas) {
+        return {
+          ok: false,
+          erro: `Em "${produto.nome}", escolha pelo menos ${secao.min_escolhas} em "${secao.nome}".`,
+        }
+      }
+      if (total > secao.max_escolhas) {
+        return {
+          ok: false,
+          erro: `Em "${produto.nome}", "${secao.nome}" aceita no máximo ${secao.max_escolhas} no total.`,
+        }
+      }
     }
 
     const base =

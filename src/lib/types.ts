@@ -17,6 +17,19 @@ export type Opcao = {
   ordem: number
 }
 
+/**
+ * Um limite que vale para o conjunto: a seção soma as escolhas de todos os
+ * grupos dela (ex.: "Churrasco" com bovino/frango/suíno, mín. 1 e máx. 2 no
+ * total). Grupo sem seção segue só com as próprias regras.
+ */
+export type SecaoOpcoes = {
+  id: string
+  produto_id: string
+  nome: string
+  min_escolhas: number
+  max_escolhas: number
+}
+
 export type GrupoOpcoes = {
   id: string
   produto_id: string
@@ -24,6 +37,7 @@ export type GrupoOpcoes = {
   min_escolhas: number
   max_escolhas: number
   ordem: number
+  secao_id: string | null
   opcoes: Opcao[]
 }
 
@@ -41,6 +55,7 @@ export type Produto = {
   /** 'ambos' | 'so_local' (buffet) | 'so_viagem' (marmita embalada) */
   modo_consumo: 'ambos' | 'so_local' | 'so_viagem'
   grupos_opcoes?: GrupoOpcoes[]
+  secoes_opcoes?: SecaoOpcoes[]
 }
 
 export type CategoriaComProdutos = Categoria & { produtos: Produto[] }

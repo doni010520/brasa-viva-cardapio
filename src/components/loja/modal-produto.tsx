@@ -5,7 +5,7 @@ import { Minus, Plus, X } from 'lucide-react'
 import { useCarrinho } from '@/components/carrinho-contexto'
 import { AreaTexto, Botao } from '@/components/ui'
 import { moeda } from '@/lib/format'
-import type { OpcaoEscolhida, Produto } from '@/lib/types'
+import type { GrupoOpcoes, OpcaoEscolhida, Produto, SecaoOpcoes } from '@/lib/types'
 
 export function ModalProduto({
   produto,
@@ -23,6 +23,7 @@ export function ModalProduto({
   const [escolhas, setEscolhas] = useState<Record<string, string[]>>({})
 
   const grupos = useMemo(() => produto.grupos_opcoes ?? [], [produto])
+  const secoes = useMemo(() => produto.secoes_opcoes ?? [], [produto])
 
   const precoBase =
     produto.preco_promo_centavos !== null && produto.preco_promo_centavos < produto.preco_centavos
@@ -72,10 +73,38 @@ export function ModalProduto({
   const extras = selecionadas.reduce((s, o) => s + o.preco_extra_centavos, 0)
   const total = (precoBase + extras) * quantidade
 
-  const faltando = grupos.filter(
-    (g) => g.min_escolhas > 0 && (escolhas[g.id]?.length ?? 0) < g.min_escolhas
-  )
-  const podeAdicionar = faltando.length === 0 && lojaAberta && produto.disponivel
+  /** Total escolhido no conjunto de grupos de uma seção. */
+  function totalDaSecao(secaoId: string) {
+    return grupos
+      .filter((g) => g.secao_id === secaoId)
+      .reduce((soma, g) => soma + (escolhas[g.id]?.length ?? 0), 0)
+  }
+
+  // O que ainda falta escolher: mínimos de cada grupo e mínimos das seções
+  const nomesPendentes = [
+    ...grupos
+      .filter((g) => g.min_escolhas > 0 && (escolhas[g.id]?.length ?? 0) < g.min_escolhas)
+      .map((g) => g.nome),
+    ...secoes.filter((s) => totalDaSecao(s.id) < s.min_escolhas).map((s) => s.nome),
+  ]
+  const podeAdicionar = nomesPendentes.length === 0 && lojaAberta && produto.disponivel
+
+  // Ordem de exibição: a seção aparece inteira na posição do primeiro grupo dela
+  const blocos = useMemo(() => {
+    const resultado: ({ secao: SecaoOpcoes; grupos: GrupoOpcoes[] } | { grupo: GrupoOpcoes })[] = []
+    const secoesVistas = new Set<string>()
+    for (const grupo of grupos) {
+      const secao = grupo.secao_id ? secoes.find((s) => s.id === grupo.secao_id) : undefined
+      if (!secao) {
+        resultado.push({ grupo })
+        continue
+      }
+      if (secoesVistas.has(secao.id)) continue
+      secoesVistas.add(secao.id)
+      resultado.push({ secao, grupos: grupos.filter((g) => g.secao_id === secao.id) })
+    }
+    return resultado
+  }, [grupos, secoes])
 
   function alternar(grupoId: string, opcaoId: string, maximo: number, minimo: number) {
     setEscolhas((atuais) => {
@@ -143,72 +172,45 @@ export function ModalProduto({
           {produto.descricao && <p className="mt-1 text-tinta-500">{produto.descricao}</p>}
           <p className="mt-2 font-bold text-tinta-900">{moeda(precoBase)}</p>
 
-          {grupos.map((grupo) => {
-            const marcadas = escolhas[grupo.id] ?? []
-            const unica = grupo.max_escolhas === 1
-            const obrigatorio = grupo.min_escolhas > 0
-
-            return (
-              <fieldset key={grupo.id} className="mt-5">
-                <div className="mb-2 flex items-center justify-between gap-2">
-                  <legend className="font-semibold text-tinta-900">{grupo.nome}</legend>
+          {blocos.map((bloco) =>
+            'secao' in bloco ? (
+              <section key={bloco.secao.id} className="mt-5 rounded-2xl border border-tinta-200 p-3">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="font-bold text-tinta-900">{bloco.secao.nome}</p>
                   <span
                     className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${
-                      obrigatorio && marcadas.length < grupo.min_escolhas
+                      totalDaSecao(bloco.secao.id) < bloco.secao.min_escolhas
                         ? 'bg-marca-50 text-marca-700'
                         : 'bg-tinta-100 text-tinta-500'
                     }`}
                   >
-                    {obrigatorio
-                      ? 'Obrigatório'
-                      : grupo.max_escolhas === 1
-                        ? 'Opcional'
-                        : `Até ${grupo.max_escolhas}`}
+                    {totalDaSecao(bloco.secao.id) < bloco.secao.min_escolhas
+                      ? bloco.secao.min_escolhas === bloco.secao.max_escolhas
+                        ? `Escolha ${bloco.secao.max_escolhas}`
+                        : `Escolha ${bloco.secao.min_escolhas} a ${bloco.secao.max_escolhas}`
+                      : `${totalDaSecao(bloco.secao.id)} de ${bloco.secao.max_escolhas}`}
                   </span>
                 </div>
-
-                <div className="space-y-1.5">
-                  {grupo.opcoes.map((opcao) => {
-                    const marcada = marcadas.includes(opcao.id)
-                    const limiteAtingido =
-                      !unica && !marcada && marcadas.length >= grupo.max_escolhas
-
-                    return (
-                      <label
-                        key={opcao.id}
-                        className={`flex cursor-pointer items-center gap-3 rounded-xl border px-3 py-2.5 transition ${
-                          marcada ? 'border-tinta-900 bg-tinta-50' : 'border-tinta-200'
-                        } ${
-                          !opcao.disponivel || limiteAtingido
-                            ? 'cursor-not-allowed opacity-45'
-                            : 'hover:border-tinta-300'
-                        }`}
-                      >
-                        <input
-                          // radio só quando não dá para ficar vazio: no grupo
-                          // opcional a bolinha mentiria que não tem como desmarcar
-                          type={unica && obrigatorio ? 'radio' : 'checkbox'}
-                          name={grupo.id}
-                          checked={marcada}
-                          disabled={!opcao.disponivel || limiteAtingido}
-                          onChange={() =>
-                            alternar(grupo.id, opcao.id, grupo.max_escolhas, grupo.min_escolhas)
-                          }
-                          className="h-5 w-5 accent-black"
-                        />
-                        <span className="flex-1 text-sm text-tinta-900">{opcao.nome}</span>
-                        {opcao.preco_extra_centavos > 0 && (
-                          <span className="text-sm font-semibold text-tinta-600">
-                            + {moeda(opcao.preco_extra_centavos)}
-                          </span>
-                        )}
-                      </label>
-                    )
-                  })}
-                </div>
-              </fieldset>
+                {bloco.grupos.map((grupo) => (
+                  <CampoDoGrupo
+                    key={grupo.id}
+                    grupo={grupo}
+                    secao={bloco.secao}
+                    totalNaSecao={totalDaSecao(bloco.secao.id)}
+                    marcadas={escolhas[grupo.id] ?? []}
+                    aoAlternar={alternar}
+                  />
+                ))}
+              </section>
+            ) : (
+              <CampoDoGrupo
+                key={bloco.grupo.id}
+                grupo={bloco.grupo}
+                marcadas={escolhas[bloco.grupo.id] ?? []}
+                aoAlternar={alternar}
+              />
             )
-          })}
+          )}
 
           <div className="mt-5">
             <label className="mb-1.5 block font-semibold text-tinta-900" htmlFor="obs">
@@ -226,9 +228,9 @@ export function ModalProduto({
         </div>
 
         <div className="shrink-0 border-t border-tinta-200 p-4">
-          {faltando.length > 0 && (
+          {nomesPendentes.length > 0 && (
             <p className="mb-2 text-center text-xs font-medium text-marca-600">
-              Escolha: {faltando.map((g) => g.nome).join(', ')}
+              Escolha: {nomesPendentes.join(', ')}
             </p>
           )}
           {!lojaAberta && (
@@ -264,5 +266,85 @@ export function ModalProduto({
         </div>
       </div>
     </div>
+  )
+}
+
+/** Um grupo de opções. Dentro de seção, respeita também o limite do conjunto. */
+function CampoDoGrupo({
+  grupo,
+  secao,
+  totalNaSecao = 0,
+  marcadas,
+  aoAlternar,
+}: {
+  grupo: GrupoOpcoes
+  secao?: SecaoOpcoes
+  totalNaSecao?: number
+  marcadas: string[]
+  aoAlternar: (grupoId: string, opcaoId: string, maximo: number, minimo: number) => void
+}) {
+  const unica = grupo.max_escolhas === 1
+  const obrigatorio = grupo.min_escolhas > 0
+  const secaoCheia = Boolean(secao && totalNaSecao >= secao.max_escolhas)
+
+  return (
+    <fieldset className={secao ? 'mt-3' : 'mt-5'}>
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <legend className="font-semibold text-tinta-900">{grupo.nome}</legend>
+        <span
+          className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${
+            obrigatorio && marcadas.length < grupo.min_escolhas
+              ? 'bg-marca-50 text-marca-700'
+              : 'bg-tinta-100 text-tinta-500'
+          }`}
+        >
+          {obrigatorio
+            ? 'Obrigatório'
+            : grupo.max_escolhas === 1
+              ? 'Opcional'
+              : `Até ${grupo.max_escolhas}`}
+        </span>
+      </div>
+
+      <div className="space-y-1.5">
+        {grupo.opcoes.map((opcao) => {
+          const marcada = marcadas.includes(opcao.id)
+          const limiteAtingido = !unica && !marcada && marcadas.length >= grupo.max_escolhas
+          // Trocar dentro do mesmo grupo de escolha única não aumenta o total
+          // da seção — então a seção cheia não trava a troca, só o acréscimo.
+          const acrescentaria = !marcada && !(unica && marcadas.length === 1)
+          const travadaPelaSecao = secaoCheia && acrescentaria
+          const bloqueada = !opcao.disponivel || limiteAtingido || travadaPelaSecao
+
+          return (
+            <label
+              key={opcao.id}
+              className={`flex cursor-pointer items-center gap-3 rounded-xl border px-3 py-2.5 transition ${
+                marcada ? 'border-tinta-900 bg-tinta-50' : 'border-tinta-200'
+              } ${bloqueada ? 'cursor-not-allowed opacity-45' : 'hover:border-tinta-300'}`}
+            >
+              <input
+                // radio só quando não dá para ficar vazio: no grupo
+                // opcional a bolinha mentiria que não tem como desmarcar
+                type={unica && obrigatorio ? 'radio' : 'checkbox'}
+                name={grupo.id}
+                checked={marcada}
+                disabled={bloqueada}
+                onChange={() =>
+                  aoAlternar(grupo.id, opcao.id, grupo.max_escolhas, grupo.min_escolhas)
+                }
+                className="h-5 w-5 accent-black"
+              />
+              <span className="flex-1 text-sm text-tinta-900">{opcao.nome}</span>
+              {opcao.preco_extra_centavos > 0 && (
+                <span className="text-sm font-semibold text-tinta-600">
+                  + {moeda(opcao.preco_extra_centavos)}
+                </span>
+              )}
+            </label>
+          )
+        })}
+      </div>
+    </fieldset>
   )
 }

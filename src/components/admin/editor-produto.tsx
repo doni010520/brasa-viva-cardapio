@@ -19,15 +19,17 @@ import {
   excluirGrupoAction,
   excluirOpcaoAction,
   excluirProdutoAction,
+  excluirSecaoAction,
   reordenarGruposAction,
   salvarGrupoAction,
   salvarOpcaoAction,
   salvarProdutoAction,
+  salvarSecaoAction,
 } from '@/app/admin/(painel)/cardapio/acoes'
 import { EstadoDoFormulario, useNaoSalvo } from '@/components/admin/nao-salvo'
 import { AreaTexto, Botao, Campo, Cartao, Rotulo, Selecao } from '@/components/ui'
 import { centavosParaInput, moeda, paraCentavos } from '@/lib/format'
-import type { GrupoOpcoes, Produto } from '@/lib/types'
+import type { GrupoOpcoes, Produto, SecaoOpcoes } from '@/lib/types'
 
 export function EditorProduto({
   produto,
@@ -292,7 +294,11 @@ export function EditorProduto({
       </form>
 
       {produto ? (
-        <EditorOpcoes produtoId={produto.id} grupos={produto.grupos_opcoes ?? []} />
+        <EditorOpcoes
+          produtoId={produto.id}
+          grupos={produto.grupos_opcoes ?? []}
+          secoes={produto.secoes_opcoes ?? []}
+        />
       ) : (
         <p className="mt-6 rounded-xl bg-tinta-100 px-4 py-3 text-sm text-tinta-600">
           Salve o produto para poder montar os grupos de opções (ponto da carne, adicionais,
@@ -389,9 +395,18 @@ function SeletorImagem({
 
 // ------------------------------------------------------- grupos de opções
 
-function EditorOpcoes({ produtoId, grupos }: { produtoId: string; grupos: GrupoOpcoes[] }) {
+function EditorOpcoes({
+  produtoId,
+  grupos,
+  secoes,
+}: {
+  produtoId: string
+  grupos: GrupoOpcoes[]
+  secoes: SecaoOpcoes[]
+}) {
   const router = useRouter()
   const [criandoGrupo, setCriandoGrupo] = useState(false)
+  const [criandoSecao, setCriandoSecao] = useState(false)
   const [erro, setErro] = useState('')
   const [reordenando, reordenar] = useTransition()
 
@@ -451,16 +466,36 @@ function EditorOpcoes({ produtoId, grupos }: { produtoId: string; grupos: GrupoO
             {grupos.length > 1 && ' Arraste pela alça (ou use as setas) para mudar a ordem.'}
           </p>
         </div>
-        <Botao variante="fantasma" onClick={() => setCriandoGrupo(true)}>
-          <Plus className="h-4 w-4" />
-          Novo grupo
-        </Botao>
+        <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
+          <Botao variante="fantasma" onClick={() => setCriandoSecao(true)}>
+            <Plus className="h-4 w-4" />
+            Nova seção
+          </Botao>
+          <Botao variante="fantasma" onClick={() => setCriandoGrupo(true)}>
+            <Plus className="h-4 w-4" />
+            Novo grupo
+          </Botao>
+        </div>
       </div>
 
       {erro && (
         <p className="mb-3 rounded-xl bg-marca-50 px-4 py-3 text-sm font-medium text-marca-700">
           {erro}
         </p>
+      )}
+
+      {secoes.length > 0 && (
+        <div className="mb-3 space-y-2">
+          {secoes.map((secao) => (
+            <BlocoSecao
+              key={secao.id}
+              secao={secao}
+              produtoId={produtoId}
+              quantosGrupos={grupos.filter((g) => g.secao_id === secao.id).length}
+              onErro={setErro}
+            />
+          ))}
+        </div>
       )}
 
       <div className="space-y-3">
@@ -483,6 +518,7 @@ function EditorOpcoes({ produtoId, grupos }: { produtoId: string; grupos: GrupoO
             <BlocoGrupo
               grupo={grupo}
               produtoId={produtoId}
+              secoes={secoes}
               onErro={setErro}
               aoIniciarArrasto={() => setArrastandoId(grupo.id)}
               aoTerminarArrasto={() => {
@@ -507,9 +543,22 @@ function EditorOpcoes({ produtoId, grupos }: { produtoId: string; grupos: GrupoO
         <FormularioGrupo
           produtoId={produtoId}
           grupo={null}
+          secoes={secoes}
           onFechar={() => setCriandoGrupo(false)}
           onSalvo={() => {
             setCriandoGrupo(false)
+            router.refresh()
+          }}
+        />
+      )}
+
+      {criandoSecao && (
+        <FormularioSecao
+          produtoId={produtoId}
+          secao={null}
+          onFechar={() => setCriandoSecao(false)}
+          onSalvo={() => {
+            setCriandoSecao(false)
             router.refresh()
           }}
         />
@@ -518,9 +567,183 @@ function EditorOpcoes({ produtoId, grupos }: { produtoId: string; grupos: GrupoO
   )
 }
 
+/**
+ * A régua da seção no painel: nome, limite do conjunto e quantos grupos
+ * estão dentro. Apagar a seção não apaga os grupos — eles ficam soltos.
+ */
+function BlocoSecao({
+  secao,
+  produtoId,
+  quantosGrupos,
+  onErro,
+}: {
+  secao: SecaoOpcoes
+  produtoId: string
+  quantosGrupos: number
+  onErro: (mensagem: string) => void
+}) {
+  const router = useRouter()
+  const [editando, setEditando] = useState(false)
+  const [apagando, apagar] = useTransition()
+
+  function excluir() {
+    if (
+      !confirm(
+        `Apagar a seção "${secao.nome}"? Os grupos dela continuam existindo, só perdem o limite de conjunto.`
+      )
+    )
+      return
+    apagar(async () => {
+      const resposta = await excluirSecaoAction(secao.id, produtoId)
+      if (!resposta.ok) onErro(resposta.erro)
+      else router.refresh()
+    })
+  }
+
+  const regra =
+    secao.min_escolhas === secao.max_escolhas
+      ? `escolhe ${secao.max_escolhas} no total`
+      : secao.min_escolhas > 0
+        ? `escolhe de ${secao.min_escolhas} a ${secao.max_escolhas} no total`
+        : `até ${secao.max_escolhas} no total`
+
+  return (
+    <div className="flex items-center justify-between gap-2 rounded-xl border border-dashed border-tinta-300 bg-tinta-50 px-4 py-2.5">
+      <p className="min-w-0 text-sm text-tinta-700">
+        <span className="font-semibold text-tinta-900">Seção {secao.nome}</span> · {regra} ·{' '}
+        {quantosGrupos} grupo{quantosGrupos === 1 ? '' : 's'}
+      </p>
+      <div className="flex shrink-0 gap-1">
+        <button
+          onClick={() => setEditando(true)}
+          className="rounded-lg px-2.5 py-1.5 text-xs font-semibold text-tinta-500 hover:bg-tinta-100"
+        >
+          editar
+        </button>
+        <button
+          onClick={excluir}
+          disabled={apagando}
+          className="toque rounded-lg text-tinta-500 hover:bg-marca-50 hover:text-marca-600"
+          aria-label={`Apagar seção ${secao.nome}`}
+        >
+          {apagando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+        </button>
+      </div>
+
+      {editando && (
+        <FormularioSecao
+          produtoId={produtoId}
+          secao={secao}
+          onFechar={() => setEditando(false)}
+          onSalvo={() => {
+            setEditando(false)
+            router.refresh()
+          }}
+        />
+      )}
+    </div>
+  )
+}
+
+function FormularioSecao({
+  produtoId,
+  secao,
+  onFechar,
+  onSalvo,
+}: {
+  produtoId: string
+  secao: SecaoOpcoes | null
+  onFechar: () => void
+  onSalvo: () => void
+}) {
+  const [salvando, salvar] = useTransition()
+  const [erro, setErro] = useState('')
+  const [nome, setNome] = useState(secao?.nome ?? '')
+  const [min, setMin] = useState(String(secao?.min_escolhas ?? 1))
+  const [max, setMax] = useState(String(secao?.max_escolhas ?? 2))
+
+  function enviar(evento: React.FormEvent) {
+    evento.preventDefault()
+    setErro('')
+    salvar(async () => {
+      const resposta = await salvarSecaoAction({
+        id: secao?.id,
+        produto_id: produtoId,
+        nome,
+        min_escolhas: min,
+        max_escolhas: max,
+      })
+      if (!resposta.ok) setErro(resposta.erro)
+      else onSalvo()
+    })
+  }
+
+  return (
+    <ModalSimples titulo={secao ? 'Editar seção' : 'Nova seção'} onFechar={onFechar}>
+      <form onSubmit={enviar} className="space-y-3">
+        <div>
+          <Rotulo htmlFor="secao-nome">Nome da seção</Rotulo>
+          <Campo
+            id="secao-nome"
+            required
+            autoFocus
+            value={nome}
+            onChange={(e) => setNome(e.target.value)}
+            placeholder="Ex.: Churrasco"
+          />
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <Rotulo htmlFor="secao-min">Mínimo no total</Rotulo>
+            <Campo
+              id="secao-min"
+              type="number"
+              min={0}
+              max={20}
+              value={min}
+              onChange={(e) => setMin(e.target.value)}
+            />
+          </div>
+          <div>
+            <Rotulo htmlFor="secao-max">Máximo no total</Rotulo>
+            <Campo
+              id="secao-max"
+              type="number"
+              min={1}
+              max={20}
+              value={max}
+              onChange={(e) => setMax(e.target.value)}
+            />
+          </div>
+        </div>
+
+        <p className="text-xs text-tinta-400">
+          O limite vale para a SOMA dos grupos da seção. Ex.: Churrasco com mínimo 1 e máximo 2 —
+          o cliente escolhe 1 ou 2 carnes, contando todos os tipos juntos. Depois, edite cada
+          grupo e marque a seção dele.
+        </p>
+
+        {erro && <p className="text-sm font-medium text-marca-600">{erro}</p>}
+
+        <div className="flex gap-2 pt-1">
+          <Botao type="button" variante="fantasma" onClick={onFechar} className="flex-1">
+            Cancelar
+          </Botao>
+          <Botao type="submit" disabled={salvando} className="flex-1">
+            {salvando && <Loader2 className="h-4 w-4 animate-spin" />}
+            Salvar
+          </Botao>
+        </div>
+      </form>
+    </ModalSimples>
+  )
+}
+
 function BlocoGrupo({
   grupo,
   produtoId,
+  secoes,
   onErro,
   aoIniciarArrasto,
   aoTerminarArrasto,
@@ -531,6 +754,7 @@ function BlocoGrupo({
 }: {
   grupo: GrupoOpcoes
   produtoId: string
+  secoes: SecaoOpcoes[]
   onErro: (mensagem: string) => void
   aoIniciarArrasto: () => void
   aoTerminarArrasto: () => void
@@ -560,6 +784,10 @@ function BlocoGrupo({
         ? `Obrigatório · escolhe ${grupo.min_escolhas}`
         : `Obrigatório · de ${grupo.min_escolhas} a ${grupo.max_escolhas}`
 
+  const nomeSecao = grupo.secao_id
+    ? secoes.find((s) => s.id === grupo.secao_id)?.nome
+    : undefined
+
   return (
     <Cartao className="p-4">
       <div className="flex items-start justify-between gap-2">
@@ -581,7 +809,15 @@ function BlocoGrupo({
           </button>
           <div className="min-w-0">
             <h3 className="font-semibold text-tinta-900">{grupo.nome}</h3>
-            <p className="text-xs text-tinta-500">{regra}</p>
+            <p className="text-xs text-tinta-500">
+              {regra}
+              {nomeSecao && (
+                <>
+                  {' · '}
+                  <span className="font-semibold text-amber-700">Seção {nomeSecao}</span>
+                </>
+              )}
+            </p>
           </div>
         </div>
         <div className="flex items-center gap-1">
@@ -647,6 +883,7 @@ function BlocoGrupo({
         <FormularioGrupo
           produtoId={produtoId}
           grupo={grupo}
+          secoes={secoes}
           onFechar={() => setEditando(false)}
           onSalvo={() => {
             setEditando(false)
@@ -750,11 +987,13 @@ function LinhaOpcao({
 function FormularioGrupo({
   produtoId,
   grupo,
+  secoes,
   onFechar,
   onSalvo,
 }: {
   produtoId: string
   grupo: GrupoOpcoes | null
+  secoes: SecaoOpcoes[]
   onFechar: () => void
   onSalvo: () => void
 }) {
@@ -764,6 +1003,7 @@ function FormularioGrupo({
   const [min, setMin] = useState(String(grupo?.min_escolhas ?? 0))
   const [max, setMax] = useState(String(grupo?.max_escolhas ?? 1))
   const [ordem, setOrdem] = useState(String(grupo?.ordem ?? 0))
+  const [secaoId, setSecaoId] = useState(grupo?.secao_id ?? '')
 
   function enviar(evento: React.FormEvent) {
     evento.preventDefault()
@@ -776,6 +1016,7 @@ function FormularioGrupo({
         min_escolhas: min,
         max_escolhas: max,
         ordem,
+        secao_id: secaoId || null,
       })
       if (!resposta.ok) setErro(resposta.erro)
       else onSalvo()
@@ -835,6 +1076,27 @@ function FormularioGrupo({
         <p className="text-xs text-tinta-400">
           Mínimo 0 deixa o grupo opcional. Mínimo 1 e máximo 1 vira escolha obrigatória única.
         </p>
+
+        {secoes.length > 0 && (
+          <div>
+            <Rotulo htmlFor="grupo-secao">Faz parte de uma seção?</Rotulo>
+            <Selecao
+              id="grupo-secao"
+              value={secaoId}
+              onChange={(e) => setSecaoId(e.target.value)}
+            >
+              <option value="">Nenhuma — grupo solto</option>
+              {secoes.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.nome}
+                </option>
+              ))}
+            </Selecao>
+            <p className="mt-1 text-xs text-tinta-400">
+              Dentro da seção, o limite dela vale para a soma de todos os grupos.
+            </p>
+          </div>
+        )}
 
         {erro && <p className="text-sm font-medium text-marca-600">{erro}</p>}
 

@@ -189,6 +189,8 @@ const esquemaGrupo = z.object({
   min_escolhas: z.coerce.number().int().min(0).max(20),
   max_escolhas: z.coerce.number().int().min(1).max(20),
   ordem: z.coerce.number().int().min(0).max(99),
+  // seção a que o grupo pertence (o limite de conjunto); null = grupo solto
+  secao_id: z.string().uuid().nullable(),
 })
 
 export async function salvarGrupoAction(entrada: unknown): Promise<Resposta> {
@@ -264,6 +266,61 @@ export async function excluirGrupoAction(id: string, produtoId: string): Promise
   const supabase = criarClienteAdmin()
   const { error } = await supabase.from('grupos_opcoes').delete().eq('id', id)
   if (error) return { ok: false, erro: 'Não consegui apagar o grupo.' }
+
+  atualizarTelas()
+  revalidatePath(`/admin/cardapio/${produtoId}`)
+  return { ok: true }
+}
+
+// -------------------------------------------------------------- seções
+
+const esquemaSecao = z.object({
+  id: z.string().uuid().optional(),
+  produto_id: z.string().uuid(),
+  nome: z.string().trim().min(2, 'Dê um nome à seção.').max(60),
+  min_escolhas: z.coerce.number().int().min(0).max(20),
+  max_escolhas: z.coerce.number().int().min(1).max(20),
+})
+
+/**
+ * Seção é o limite que vale para o CONJUNTO de grupos dela — ex.: "Churrasco"
+ * com bovino/frango/suíno dentro, no mínimo 1 e no máximo 2 escolhas somando
+ * todos. As regras de cada grupo continuam valendo por cima.
+ */
+export async function salvarSecaoAction(entrada: unknown): Promise<Resposta> {
+  const bloqueio = await garantirDono()
+  if (bloqueio) return { ok: false, erro: bloqueio }
+
+  const analise = esquemaSecao.safeParse(entrada)
+  if (!analise.success) {
+    return { ok: false, erro: analise.error.issues[0]?.message ?? 'Dados inválidos.' }
+  }
+  const { id, ...campos } = analise.data
+
+  if (campos.min_escolhas > campos.max_escolhas) {
+    return { ok: false, erro: 'O mínimo não pode ser maior que o máximo.' }
+  }
+
+  const supabase = criarClienteAdmin()
+  const { error } = id
+    ? await supabase.from('secoes_opcoes').update(campos).eq('id', id)
+    : await supabase.from('secoes_opcoes').insert(campos)
+
+  if (error) return { ok: false, erro: 'Não consegui salvar a seção.' }
+
+  atualizarTelas()
+  revalidatePath(`/admin/cardapio/${campos.produto_id}`)
+  return { ok: true }
+}
+
+export async function excluirSecaoAction(id: string, produtoId: string): Promise<Resposta> {
+  const bloqueio = await garantirDono()
+  if (bloqueio) return { ok: false, erro: bloqueio }
+
+  // os grupos dela não somem: ficam soltos (secao_id vira null no banco)
+  const supabase = criarClienteAdmin()
+  const { error } = await supabase.from('secoes_opcoes').delete().eq('id', id)
+  if (error) return { ok: false, erro: 'Não consegui apagar a seção.' }
 
   atualizarTelas()
   revalidatePath(`/admin/cardapio/${produtoId}`)
