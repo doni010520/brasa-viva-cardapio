@@ -77,10 +77,15 @@ export function ModalProduto({
   )
   const podeAdicionar = faltando.length === 0 && lojaAberta && produto.disponivel
 
-  function alternar(grupoId: string, opcaoId: string, maximo: number) {
+  function alternar(grupoId: string, opcaoId: string, maximo: number, minimo: number) {
     setEscolhas((atuais) => {
       const marcadas = atuais[grupoId] ?? []
-      if (maximo === 1) return { ...atuais, [grupoId]: [opcaoId] }
+      if (maximo === 1) {
+        // escolha única: no grupo opcional, clicar de novo DESMARCA — sem isso
+        // quem marca a farofa sem querer fica preso com ela até fechar o modal
+        if (minimo === 0 && marcadas.includes(opcaoId)) return { ...atuais, [grupoId]: [] }
+        return { ...atuais, [grupoId]: [opcaoId] }
+      }
       if (marcadas.includes(opcaoId)) {
         return { ...atuais, [grupoId]: marcadas.filter((id) => id !== opcaoId) }
       }
@@ -154,7 +159,11 @@ export function ModalProduto({
                         : 'bg-tinta-100 text-tinta-500'
                     }`}
                   >
-                    {obrigatorio ? 'Obrigatório' : `Até ${grupo.max_escolhas}`}
+                    {obrigatorio
+                      ? 'Obrigatório'
+                      : grupo.max_escolhas === 1
+                        ? 'Opcional'
+                        : `Até ${grupo.max_escolhas}`}
                   </span>
                 </div>
 
@@ -176,11 +185,15 @@ export function ModalProduto({
                         }`}
                       >
                         <input
-                          type={unica ? 'radio' : 'checkbox'}
+                          // radio só quando não dá para ficar vazio: no grupo
+                          // opcional a bolinha mentiria que não tem como desmarcar
+                          type={unica && obrigatorio ? 'radio' : 'checkbox'}
                           name={grupo.id}
                           checked={marcada}
                           disabled={!opcao.disponivel || limiteAtingido}
-                          onChange={() => alternar(grupo.id, opcao.id, grupo.max_escolhas)}
+                          onChange={() =>
+                            alternar(grupo.id, opcao.id, grupo.max_escolhas, grupo.min_escolhas)
+                          }
                           className="h-5 w-5 accent-black"
                         />
                         <span className="flex-1 text-sm text-tinta-900">{opcao.nome}</span>
