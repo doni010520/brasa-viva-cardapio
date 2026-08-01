@@ -55,17 +55,20 @@ export async function conferirItens(itens: ItemEnviado[]): Promise<ConferenciaOk
     }
 
     const grupos: GrupoOpcoes[] = produto.grupos_opcoes ?? []
-    const escolhidos = new Set(item.opcaoIds)
+    // id repetido no envio = quantidade ("3x Fraldinha" chega como 3 ids iguais)
+    const contagem = new Map<string, number>()
+    for (const id of item.opcaoIds) contagem.set(id, (contagem.get(id) ?? 0) + 1)
     const opcoes: OpcaoEscolhida[] = []
     let extras = 0
 
     for (const grupo of grupos) {
-      const doGrupo = grupo.opcoes.filter((o) => escolhidos.has(o.id))
+      const doGrupo = grupo.opcoes.filter((o) => contagem.has(o.id))
+      const totalDoGrupo = doGrupo.reduce((s, o) => s + (contagem.get(o.id) ?? 0), 0)
 
-      if (doGrupo.length < grupo.min_escolhas) {
+      if (totalDoGrupo < grupo.min_escolhas) {
         return { ok: false, erro: `Em "${produto.nome}", escolha: ${grupo.nome}.` }
       }
-      if (doGrupo.length > grupo.max_escolhas) {
+      if (totalDoGrupo > grupo.max_escolhas) {
         return {
           ok: false,
           erro: `Em "${produto.nome}", "${grupo.nome}" aceita no máximo ${grupo.max_escolhas}.`,
@@ -73,6 +76,13 @@ export async function conferirItens(itens: ItemEnviado[]): Promise<ConferenciaOk
       }
 
       for (const opcao of doGrupo) {
+        const vezes = contagem.get(opcao.id) ?? 0
+        if (!grupo.permite_repetir && vezes > 1) {
+          return {
+            ok: false,
+            erro: `Em "${produto.nome}", "${grupo.nome}" não aceita repetir a mesma opção.`,
+          }
+        }
         if (!opcao.disponivel) {
           return { ok: false, erro: `"${opcao.nome}" acabou. Ajuste "${produto.nome}".` }
         }
@@ -81,8 +91,9 @@ export async function conferirItens(itens: ItemEnviado[]): Promise<ConferenciaOk
           grupo: grupo.nome,
           nome: opcao.nome,
           preco_extra_centavos: opcao.preco_extra_centavos,
+          ...(vezes > 1 ? { quantidade: vezes } : {}),
         })
-        extras += opcao.preco_extra_centavos
+        extras += opcao.preco_extra_centavos * vezes
       }
     }
 
@@ -98,7 +109,10 @@ export async function conferirItens(itens: ItemEnviado[]): Promise<ConferenciaOk
     for (const secao of secoes) {
       const total = grupos
         .filter((g) => g.secao_id === secao.id)
-        .reduce((soma, g) => soma + g.opcoes.filter((o) => escolhidos.has(o.id)).length, 0)
+        .reduce(
+          (soma, g) => soma + g.opcoes.reduce((s, o) => s + (contagem.get(o.id) ?? 0), 0),
+          0
+        )
 
       if (total < secao.min_escolhas) {
         return {

@@ -19,6 +19,7 @@ import { conferirCupomAction, criarPedidoAction } from '@/app/(loja)/checkout/ac
 import { AreaTexto, Botao, Campo, Cartao, Rotulo, Selecao, Vazio } from '@/components/ui'
 import { mascaraTelefone, moeda } from '@/lib/format'
 import type { OpcaoRetirada } from '@/lib/tempo'
+import { rotuloOpcao } from '@/lib/types'
 import type { Bairro, FormaPagamento, TipoEntrega } from '@/lib/types'
 
 const CHAVE_CLIENTE = 'cardapio:cliente:v1'
@@ -143,7 +144,8 @@ export function FormularioCheckout({
       itens.map((i) => ({
         produtoId: i.produtoId,
         quantidade: i.quantidade,
-        opcaoIds: i.opcoes.map((o) => o.id),
+        // id repetido = quantidade: "3x Fraldinha" vai como três ids iguais
+        opcaoIds: i.opcoes.flatMap((o) => Array<string>(o.quantidade ?? 1).fill(o.id)),
         observacao: i.observacao || undefined,
       })),
     [itens]
@@ -595,7 +597,7 @@ export function FormularioCheckout({
                 {item.quantidade}x {item.nome}
                 {item.opcoes.length > 0 && (
                   <span className="block text-xs text-tinta-400">
-                    {item.opcoes.map((o) => o.nome).join(', ')}
+                    {item.opcoes.map((o) => rotuloOpcao(o)).join(', ')}
                   </span>
                 )}
               </span>

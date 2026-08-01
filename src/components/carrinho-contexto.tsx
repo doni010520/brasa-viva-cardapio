@@ -1,6 +1,7 @@
 'use client'
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
+import { extraDaOpcao } from '@/lib/types'
 import type { ItemCarrinho, OpcaoEscolhida } from '@/lib/types'
 
 const CHAVE = 'cardapio:carrinho:v1'
@@ -20,10 +21,10 @@ type CarrinhoContexto = {
 
 const Contexto = createContext<CarrinhoContexto | null>(null)
 
-/** Duas linhas com o mesmo produto, mesmas opções e mesma observação se juntam. */
+/** Duas linhas com o mesmo produto, mesmas opções (e quantidades) e mesma observação se juntam. */
 function chaveDaLinha(item: EntradaCarrinho) {
   const opcoes = [...item.opcoes]
-    .map((o) => `${o.grupo}:${o.nome}`)
+    .map((o) => `${o.grupo}:${o.nome}x${o.quantidade ?? 1}`)
     .sort()
     .join('|')
   return `${item.produtoId}::${opcoes}::${item.observacao.trim().toLowerCase()}`
@@ -32,7 +33,7 @@ function chaveDaLinha(item: EntradaCarrinho) {
 export function precoDaLinha(item: Pick<ItemCarrinho, 'precoBaseCentavos' | 'opcoes'>) {
   return (
     item.precoBaseCentavos +
-    item.opcoes.reduce((soma: number, o: OpcaoEscolhida) => soma + o.preco_extra_centavos, 0)
+    item.opcoes.reduce((soma: number, o: OpcaoEscolhida) => soma + extraDaOpcao(o), 0)
   )
 }
 

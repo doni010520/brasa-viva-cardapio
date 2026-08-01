@@ -38,6 +38,8 @@ export type GrupoOpcoes = {
   max_escolhas: number
   ordem: number
   secao_id: string | null
+  /** Deixa pedir 3x a mesma opção (adicionais). O máximo conta as repetições. */
+  permite_repetir: boolean
   opcoes: Opcao[]
 }
 
@@ -193,6 +195,19 @@ export type OpcaoEscolhida = {
   grupo: string
   nome: string
   preco_extra_centavos: number
+  /** Quantas vezes (grupos com "pode repetir"). Ausente = 1, pedidos antigos inclusos. */
+  quantidade?: number
+}
+
+/** "3x Fraldinha" quando repetida; só "Fraldinha" quando é uma. */
+export function rotuloOpcao(opcao: OpcaoEscolhida) {
+  const vezes = opcao.quantidade ?? 1
+  return vezes > 1 ? `${vezes}x ${opcao.nome}` : opcao.nome
+}
+
+/** O extra da opção já multiplicado pela quantidade. */
+export function extraDaOpcao(opcao: OpcaoEscolhida) {
+  return (opcao.quantidade ?? 1) * opcao.preco_extra_centavos
 }
 
 export type PedidoItem = {

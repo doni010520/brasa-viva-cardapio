@@ -18,7 +18,7 @@ import { Botao, Cartao, Selo } from '@/components/ui'
 import { buscarConfiguracoes, buscarPedido } from '@/lib/dados'
 import { moeda } from '@/lib/format'
 import { dataHoraCurta, horaCurta } from '@/lib/tempo'
-import { rotuloStatus, type StatusPedido, type TipoEntrega } from '@/lib/types'
+import { rotuloOpcao, rotuloStatus, type StatusPedido, type TipoEntrega } from '@/lib/types'
 
 export const dynamic = 'force-dynamic'
 
@@ -200,7 +200,7 @@ export default async function PaginaPedido({ params }: { params: Promise<{ id: s
                 {item.quantidade}x {item.produto_nome}
                 {item.opcoes.length > 0 && (
                   <span className="block text-xs text-tinta-400">
-                    {item.opcoes.map((o) => o.nome).join(', ')}
+                    {item.opcoes.map((o) => rotuloOpcao(o)).join(', ')}
                   </span>
                 )}
                 {item.observacao && (

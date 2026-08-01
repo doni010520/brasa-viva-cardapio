@@ -5,6 +5,7 @@ import { Minus, Plus, X } from 'lucide-react'
 import { useCarrinho } from '@/components/carrinho-contexto'
 import { AreaTexto, Botao } from '@/components/ui'
 import { moeda } from '@/lib/format'
+import { extraDaOpcao } from '@/lib/types'
 import type { GrupoOpcoes, OpcaoEscolhida, Produto, SecaoOpcoes } from '@/lib/types'
 
 export function ModalProduto({
@@ -55,22 +56,25 @@ export function ModalProduto({
   const selecionadas: OpcaoEscolhida[] = useMemo(() => {
     const lista: OpcaoEscolhida[] = []
     for (const grupo of grupos) {
-      for (const id of escolhas[grupo.id] ?? []) {
+      const marcadas = escolhas[grupo.id] ?? []
+      // id repetido na lista = quantidade ("3x Fraldinha")
+      for (const id of [...new Set(marcadas)]) {
         const opcao = grupo.opcoes.find((o) => o.id === id)
-        if (opcao) {
-          lista.push({
-            id: opcao.id,
-            grupo: grupo.nome,
-            nome: opcao.nome,
-            preco_extra_centavos: opcao.preco_extra_centavos,
-          })
-        }
+        if (!opcao) continue
+        const vezes = marcadas.filter((m) => m === id).length
+        lista.push({
+          id: opcao.id,
+          grupo: grupo.nome,
+          nome: opcao.nome,
+          preco_extra_centavos: opcao.preco_extra_centavos,
+          ...(vezes > 1 ? { quantidade: vezes } : {}),
+        })
       }
     }
     return lista
   }, [grupos, escolhas])
 
-  const extras = selecionadas.reduce((s, o) => s + o.preco_extra_centavos, 0)
+  const extras = selecionadas.reduce((s, o) => s + extraDaOpcao(o), 0)
   const total = (precoBase + extras) * quantidade
 
   /** Total escolhido no conjunto de grupos de uma seção. */
@@ -120,6 +124,22 @@ export function ModalProduto({
       }
       if (marcadas.length >= maximo) return atuais // já bateu o limite do grupo
       return { ...atuais, [grupoId]: [...marcadas, opcaoId] }
+    })
+  }
+
+  /** Grupos com "pode repetir": soma ou tira UMA unidade da opção. */
+  function mudarQuantidade(grupoId: string, opcaoId: string, delta: 1 | -1, maximo: number) {
+    setEscolhas((atuais) => {
+      const marcadas = atuais[grupoId] ?? []
+      if (delta > 0) {
+        if (marcadas.length >= maximo) return atuais
+        return { ...atuais, [grupoId]: [...marcadas, opcaoId] }
+      }
+      const posicao = marcadas.indexOf(opcaoId)
+      if (posicao < 0) return atuais
+      const novas = [...marcadas]
+      novas.splice(posicao, 1)
+      return { ...atuais, [grupoId]: novas }
     })
   }
 
@@ -199,6 +219,7 @@ export function ModalProduto({
                     totalNaSecao={totalDaSecao(bloco.secao.id)}
                     marcadas={escolhas[grupo.id] ?? []}
                     aoAlternar={alternar}
+                    aoMudarQuantidade={mudarQuantidade}
                   />
                 ))}
               </section>
@@ -208,6 +229,7 @@ export function ModalProduto({
                 grupo={bloco.grupo}
                 marcadas={escolhas[bloco.grupo.id] ?? []}
                 aoAlternar={alternar}
+                aoMudarQuantidade={mudarQuantidade}
               />
             )
           )}
@@ -276,15 +298,18 @@ function CampoDoGrupo({
   totalNaSecao = 0,
   marcadas,
   aoAlternar,
+  aoMudarQuantidade,
 }: {
   grupo: GrupoOpcoes
   secao?: SecaoOpcoes
   totalNaSecao?: number
   marcadas: string[]
   aoAlternar: (grupoId: string, opcaoId: string, maximo: number, minimo: number) => void
+  aoMudarQuantidade: (grupoId: string, opcaoId: string, delta: 1 | -1, maximo: number) => void
 }) {
   const unica = grupo.max_escolhas === 1
   const obrigatorio = grupo.min_escolhas > 0
+  const repetivel = grupo.permite_repetir && !unica
   const secaoCheia = Boolean(secao && totalNaSecao >= secao.max_escolhas)
 
   return (
@@ -302,19 +327,77 @@ function CampoDoGrupo({
             ? 'Obrigatório'
             : grupo.max_escolhas === 1
               ? 'Opcional'
-              : `Até ${grupo.max_escolhas}`}
+              : repetivel
+                ? `${marcadas.length} de ${grupo.max_escolhas}`
+                : `Até ${grupo.max_escolhas}`}
         </span>
       </div>
 
       <div className="space-y-1.5">
         {grupo.opcoes.map((opcao) => {
-          const marcada = marcadas.includes(opcao.id)
-          const limiteAtingido = !unica && !marcada && marcadas.length >= grupo.max_escolhas
+          const vezes = marcadas.filter((id) => id === opcao.id).length
+          const marcada = vezes > 0
+          const grupoCheio = marcadas.length >= grupo.max_escolhas
+          const limiteAtingido = !unica && !marcada && grupoCheio
           // Trocar dentro do mesmo grupo de escolha única não aumenta o total
           // da seção — então a seção cheia não trava a troca, só o acréscimo.
           const acrescentaria = !marcada && !(unica && marcadas.length === 1)
           const travadaPelaSecao = secaoCheia && acrescentaria
           const bloqueada = !opcao.disponivel || limiteAtingido || travadaPelaSecao
+
+          // Grupo repetível: a linha vira um contador (−) 2x (+)
+          if (repetivel) {
+            const podeSomar = opcao.disponivel && !grupoCheio && !secaoCheia
+            return (
+              <div
+                key={opcao.id}
+                className={`flex items-center gap-3 rounded-xl border px-3 py-2 transition ${
+                  marcada ? 'border-tinta-900 bg-tinta-50' : 'border-tinta-200'
+                } ${!opcao.disponivel ? 'opacity-45' : ''}`}
+              >
+                <span className="flex-1 text-sm text-tinta-900">{opcao.nome}</span>
+                {opcao.preco_extra_centavos > 0 && (
+                  <span className="text-sm font-semibold text-tinta-600">
+                    + {moeda(opcao.preco_extra_centavos)}
+                  </span>
+                )}
+                {marcada ? (
+                  <span className="flex items-center gap-1 rounded-lg border border-tinta-200 bg-white p-0.5">
+                    <button
+                      type="button"
+                      onClick={() => aoMudarQuantidade(grupo.id, opcao.id, -1, grupo.max_escolhas)}
+                      className="rounded-md p-1.5 text-tinta-600 hover:bg-tinta-100"
+                      aria-label={`Tirar uma unidade de ${opcao.nome}`}
+                    >
+                      <Minus className="h-3.5 w-3.5" />
+                    </button>
+                    <span className="w-7 text-center text-sm font-bold tabular-nums">
+                      {vezes}x
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => aoMudarQuantidade(grupo.id, opcao.id, 1, grupo.max_escolhas)}
+                      disabled={!podeSomar}
+                      className="rounded-md p-1.5 text-tinta-600 hover:bg-tinta-100 disabled:opacity-30"
+                      aria-label={`Somar uma unidade de ${opcao.nome}`}
+                    >
+                      <Plus className="h-3.5 w-3.5" />
+                    </button>
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => aoMudarQuantidade(grupo.id, opcao.id, 1, grupo.max_escolhas)}
+                    disabled={!podeSomar}
+                    className="rounded-lg border border-tinta-300 p-2 text-tinta-600 transition hover:border-tinta-400 hover:bg-tinta-50 disabled:opacity-30"
+                    aria-label={`Adicionar ${opcao.nome}`}
+                  >
+                    <Plus className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+            )
+          }
 
           return (
             <label

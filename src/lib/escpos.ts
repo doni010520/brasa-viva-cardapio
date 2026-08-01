@@ -1,5 +1,6 @@
 import { moeda } from './format'
 import { dataHoraCurta, horaCurta } from './tempo'
+import { extraDaOpcao, rotuloOpcao } from './types'
 import type { Pedido } from './types'
 
 /**
@@ -163,8 +164,8 @@ export function comandaEscpos(pedido: Pedido, nomeLoja: string): Uint8Array {
 
     for (const opcao of item.opcoes) {
       f.linha(
-        `   - ${semAcento(opcao.nome)}${
-          opcao.preco_extra_centavos > 0 ? ` (${moeda(opcao.preco_extra_centavos)})` : ''
+        `   - ${semAcento(rotuloOpcao(opcao))}${
+          opcao.preco_extra_centavos > 0 ? ` (${moeda(extraDaOpcao(opcao))})` : ''
         }`
       )
     }

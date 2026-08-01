@@ -191,6 +191,8 @@ const esquemaGrupo = z.object({
   ordem: z.coerce.number().int().min(0).max(99),
   // seção a que o grupo pertence (o limite de conjunto); null = grupo solto
   secao_id: z.string().uuid().nullable(),
+  // "3x Fraldinha": a mesma opção pode repetir e o máximo conta as repetições
+  permite_repetir: z.boolean(),
 })
 
 export async function salvarGrupoAction(entrada: unknown): Promise<Resposta> {

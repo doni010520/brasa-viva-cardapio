@@ -22,7 +22,7 @@ import { mudarStatusAction, reimprimirAction } from '@/app/admin/(painel)/acoes'
 import { Botao, Cartao, Selo, Vazio } from '@/components/ui'
 import { linkWhatsapp, moeda } from '@/lib/format'
 import { haQuantoTempo, horaCurta } from '@/lib/tempo'
-import { ROTULO_TIPO_ENTREGA, type Pedido, type StatusPedido } from '@/lib/types'
+import { ROTULO_TIPO_ENTREGA, rotuloOpcao, type Pedido, type StatusPedido } from '@/lib/types'
 
 const COLUNAS: { status: StatusPedido; titulo: string; cor: string }[] = [
   { status: 'recebido', titulo: 'Novos', cor: 'bg-sky-500' },
@@ -192,7 +192,7 @@ function CartaoPedido({ pedido }: { pedido: Pedido }) {
                 </span>
                 {item.opcoes.length > 0 && (
                   <span className="block pl-4 text-xs text-tinta-500">
-                    {item.opcoes.map((o) => o.nome).join(' · ')}
+                    {item.opcoes.map((o) => rotuloOpcao(o)).join(' · ')}
                   </span>
                 )}
                 {item.observacao && (

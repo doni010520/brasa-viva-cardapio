@@ -778,11 +778,12 @@ function BlocoGrupo({
   }
 
   const regra =
-    grupo.min_escolhas === 0
+    (grupo.min_escolhas === 0
       ? `Opcional · até ${grupo.max_escolhas}`
       : grupo.min_escolhas === grupo.max_escolhas
         ? `Obrigatório · escolhe ${grupo.min_escolhas}`
-        : `Obrigatório · de ${grupo.min_escolhas} a ${grupo.max_escolhas}`
+        : `Obrigatório · de ${grupo.min_escolhas} a ${grupo.max_escolhas}`) +
+    (grupo.permite_repetir ? ' · pode repetir' : '')
 
   const nomeSecao = grupo.secao_id
     ? secoes.find((s) => s.id === grupo.secao_id)?.nome
@@ -1004,6 +1005,7 @@ function FormularioGrupo({
   const [max, setMax] = useState(String(grupo?.max_escolhas ?? 1))
   const [ordem, setOrdem] = useState(String(grupo?.ordem ?? 0))
   const [secaoId, setSecaoId] = useState(grupo?.secao_id ?? '')
+  const [permiteRepetir, setPermiteRepetir] = useState(grupo?.permite_repetir ?? false)
 
   function enviar(evento: React.FormEvent) {
     evento.preventDefault()
@@ -1017,6 +1019,7 @@ function FormularioGrupo({
         max_escolhas: max,
         ordem,
         secao_id: secaoId || null,
+        permite_repetir: permiteRepetir,
       })
       if (!resposta.ok) setErro(resposta.erro)
       else onSalvo()
@@ -1076,6 +1079,22 @@ function FormularioGrupo({
         <p className="text-xs text-tinta-400">
           Mínimo 0 deixa o grupo opcional. Mínimo 1 e máximo 1 vira escolha obrigatória única.
         </p>
+
+        <label className="flex items-start gap-2.5">
+          <input
+            type="checkbox"
+            checked={permiteRepetir}
+            onChange={(e) => setPermiteRepetir(e.target.checked)}
+            className="mt-0.5 h-5 w-5 accent-black"
+          />
+          <span className="text-sm text-tinta-700">
+            Pode repetir a mesma opção (2x, 3x...)
+            <span className="block text-xs text-tinta-400">
+              Para adicionais: o cliente escolhe a quantidade de cada um, e o máximo do grupo
+              conta as repetições.
+            </span>
+          </span>
+        </label>
 
         {secoes.length > 0 && (
           <div>

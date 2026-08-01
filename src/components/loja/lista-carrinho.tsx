@@ -5,6 +5,7 @@ import { ArrowLeft, Minus, Plus, Trash2 } from 'lucide-react'
 import { precoDaLinha, useCarrinho } from '@/components/carrinho-contexto'
 import { Botao, Cartao, Vazio } from '@/components/ui'
 import { moeda } from '@/lib/format'
+import { extraDaOpcao, rotuloOpcao } from '@/lib/types'
 
 export function ListaCarrinho({
   pedidoMinimoCentavos,
@@ -74,8 +75,8 @@ export function ListaCarrinho({
                 <ul className="mt-0.5 text-sm text-tinta-500">
                   {item.opcoes.map((o, i) => (
                     <li key={`${o.grupo}-${o.nome}-${i}`}>
-                      {o.nome}
-                      {o.preco_extra_centavos > 0 && ` (+ ${moeda(o.preco_extra_centavos)})`}
+                      {rotuloOpcao(o)}
+                      {o.preco_extra_centavos > 0 && ` (+ ${moeda(extraDaOpcao(o))})`}
                     </li>
                   ))}
                 </ul>

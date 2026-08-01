@@ -4,7 +4,7 @@ import { buscarConfiguracoes, buscarPedido } from '@/lib/dados'
 import { moeda } from '@/lib/format'
 import { dataHoraCurta, horaCurta } from '@/lib/tempo'
 import { usuarioAdminAtual } from '@/lib/supabase/server'
-import { rotuloStatus } from '@/lib/types'
+import { extraDaOpcao, rotuloOpcao, rotuloStatus } from '@/lib/types'
 
 export const dynamic = 'force-dynamic'
 
@@ -88,8 +88,8 @@ export default async function PaginaComanda({ params }: { params: Promise<{ id: 
           </div>
           {item.opcoes.map((opcao, indice) => (
             <p key={`${opcao.nome}-${indice}`} className="pl-3 text-[12px]">
-              - {opcao.nome}
-              {opcao.preco_extra_centavos > 0 && ` (${moeda(opcao.preco_extra_centavos)})`}
+              - {rotuloOpcao(opcao)}
+              {opcao.preco_extra_centavos > 0 && ` (${moeda(extraDaOpcao(opcao))})`}
             </p>
           ))}
           {item.observacao && (
