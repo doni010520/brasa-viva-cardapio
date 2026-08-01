@@ -1,14 +1,25 @@
 'use client'
 
-import { useRef, useState, useTransition } from 'react'
+import { useMemo, useRef, useState, useTransition } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, ImagePlus, Loader2, Plus, Trash2, X } from 'lucide-react'
+import {
+  ArrowLeft,
+  ChevronDown,
+  ChevronUp,
+  GripVertical,
+  ImagePlus,
+  Loader2,
+  Plus,
+  Trash2,
+  X,
+} from 'lucide-react'
 import {
   enviarImagemAction,
   excluirGrupoAction,
   excluirOpcaoAction,
   excluirProdutoAction,
+  reordenarGruposAction,
   salvarGrupoAction,
   salvarOpcaoAction,
   salvarProdutoAction,
@@ -358,6 +369,53 @@ function EditorOpcoes({ produtoId, grupos }: { produtoId: string; grupos: GrupoO
   const router = useRouter()
   const [criandoGrupo, setCriandoGrupo] = useState(false)
   const [erro, setErro] = useState('')
+  const [reordenando, reordenar] = useTransition()
+
+  // A tela reordena na hora do gesto e o servidor confirma depois; se a
+  // gravação falhar, volta para a ordem que o servidor conhece.
+  const [ordemOtimista, setOrdemOtimista] = useState<string[] | null>(null)
+  const [arrastandoId, setArrastandoId] = useState<string | null>(null)
+  const [sobreId, setSobreId] = useState<string | null>(null)
+
+  const gruposOrdenados = useMemo(() => {
+    if (!ordemOtimista) return grupos
+    const porId = new Map(grupos.map((g) => [g.id, g]))
+    const ordenados = ordemOtimista.flatMap((id) => porId.get(id) ?? [])
+    // grupo criado depois do gesto entra no fim — nunca some da tela
+    return [...ordenados, ...grupos.filter((g) => !ordemOtimista.includes(g.id))]
+  }, [grupos, ordemOtimista])
+
+  function aplicarOrdem(ids: string[]) {
+    setOrdemOtimista(ids)
+    reordenar(async () => {
+      const resposta = await reordenarGruposAction({ produto_id: produtoId, ids })
+      if (!resposta.ok) {
+        setErro(resposta.erro)
+        setOrdemOtimista(null)
+        return
+      }
+      router.refresh()
+    })
+  }
+
+  function mover(id: string, direcao: -1 | 1) {
+    const ids = gruposOrdenados.map((g) => g.id)
+    const de = ids.indexOf(id)
+    const para = de + direcao
+    if (de < 0 || para < 0 || para >= ids.length) return
+    ;[ids[de], ids[para]] = [ids[para], ids[de]]
+    aplicarOrdem(ids)
+  }
+
+  function soltar(alvoId: string) {
+    const origem = arrastandoId
+    setArrastandoId(null)
+    setSobreId(null)
+    if (!origem || origem === alvoId) return
+    const ids = gruposOrdenados.map((g) => g.id).filter((id) => id !== origem)
+    ids.splice(ids.indexOf(alvoId), 0, origem)
+    aplicarOrdem(ids)
+  }
 
   return (
     <section className="mt-8">
@@ -366,6 +424,7 @@ function EditorOpcoes({ produtoId, grupos }: { produtoId: string; grupos: GrupoO
           <h2 className="text-lg font-bold text-tinta-900">Grupos de opções</h2>
           <p className="text-sm text-tinta-500">
             Ponto da carne, sabor, adicionais — o que o cliente escolhe ao pedir.
+            {grupos.length > 1 && ' Arraste pela alça (ou use as setas) para mudar a ordem.'}
           </p>
         </div>
         <Botao variante="fantasma" onClick={() => setCriandoGrupo(true)}>
@@ -381,8 +440,37 @@ function EditorOpcoes({ produtoId, grupos }: { produtoId: string; grupos: GrupoO
       )}
 
       <div className="space-y-3">
-        {grupos.map((grupo) => (
-          <BlocoGrupo key={grupo.id} grupo={grupo} produtoId={produtoId} onErro={setErro} />
+        {gruposOrdenados.map((grupo, indice) => (
+          <div
+            key={grupo.id}
+            onDragOver={(e) => {
+              e.preventDefault()
+              if (arrastandoId && arrastandoId !== grupo.id) setSobreId(grupo.id)
+            }}
+            onDragLeave={() => sobreId === grupo.id && setSobreId(null)}
+            onDrop={(e) => {
+              e.preventDefault()
+              soltar(grupo.id)
+            }}
+            className={`rounded-2xl transition ${
+              sobreId === grupo.id ? 'ring-2 ring-tinta-400 ring-offset-2' : ''
+            } ${arrastandoId === grupo.id ? 'opacity-50' : ''}`}
+          >
+            <BlocoGrupo
+              grupo={grupo}
+              produtoId={produtoId}
+              onErro={setErro}
+              aoIniciarArrasto={() => setArrastandoId(grupo.id)}
+              aoTerminarArrasto={() => {
+                setArrastandoId(null)
+                setSobreId(null)
+              }}
+              aoMover={(direcao) => mover(grupo.id, direcao)}
+              podeSubir={indice > 0}
+              podeDescer={indice < gruposOrdenados.length - 1}
+              reordenando={reordenando}
+            />
+          </div>
         ))}
         {grupos.length === 0 && !criandoGrupo && (
           <p className="rounded-xl border border-dashed border-tinta-300 px-4 py-8 text-center text-sm text-tinta-400">
@@ -410,10 +498,22 @@ function BlocoGrupo({
   grupo,
   produtoId,
   onErro,
+  aoIniciarArrasto,
+  aoTerminarArrasto,
+  aoMover,
+  podeSubir,
+  podeDescer,
+  reordenando,
 }: {
   grupo: GrupoOpcoes
   produtoId: string
   onErro: (mensagem: string) => void
+  aoIniciarArrasto: () => void
+  aoTerminarArrasto: () => void
+  aoMover: (direcao: -1 | 1) => void
+  podeSubir: boolean
+  podeDescer: boolean
+  reordenando: boolean
 }) {
   const router = useRouter()
   const [editando, setEditando] = useState(false)
@@ -439,11 +539,45 @@ function BlocoGrupo({
   return (
     <Cartao className="p-4">
       <div className="flex items-start justify-between gap-2">
-        <div>
-          <h3 className="font-semibold text-tinta-900">{grupo.nome}</h3>
-          <p className="text-xs text-tinta-500">{regra}</p>
+        <div className="flex min-w-0 items-start gap-1.5">
+          <button
+            type="button"
+            draggable
+            onDragStart={(e) => {
+              // sem setData o Firefox nem inicia o arrasto
+              e.dataTransfer.setData('text/plain', grupo.id)
+              e.dataTransfer.effectAllowed = 'move'
+              aoIniciarArrasto()
+            }}
+            onDragEnd={aoTerminarArrasto}
+            className="mt-0.5 shrink-0 cursor-grab rounded p-1 text-tinta-300 hover:bg-tinta-100 hover:text-tinta-500 active:cursor-grabbing"
+            aria-label={`Arrastar o grupo ${grupo.nome} para reordenar`}
+          >
+            <GripVertical className="h-4 w-4" />
+          </button>
+          <div className="min-w-0">
+            <h3 className="font-semibold text-tinta-900">{grupo.nome}</h3>
+            <p className="text-xs text-tinta-500">{regra}</p>
+          </div>
         </div>
-        <div className="flex gap-1">
+        <div className="flex items-center gap-1">
+          {/* setas cobrem o toque no celular, onde arrastar não existe */}
+          <button
+            onClick={() => aoMover(-1)}
+            disabled={!podeSubir || reordenando}
+            className="rounded-lg p-1.5 text-tinta-400 hover:bg-tinta-100 hover:text-tinta-700 disabled:opacity-30"
+            aria-label={`Mover o grupo ${grupo.nome} para cima`}
+          >
+            <ChevronUp className="h-4 w-4" />
+          </button>
+          <button
+            onClick={() => aoMover(1)}
+            disabled={!podeDescer || reordenando}
+            className="rounded-lg p-1.5 text-tinta-400 hover:bg-tinta-100 hover:text-tinta-700 disabled:opacity-30"
+            aria-label={`Mover o grupo ${grupo.nome} para baixo`}
+          >
+            <ChevronDown className="h-4 w-4" />
+          </button>
           <button
             onClick={() => setEditando(true)}
             className="rounded-lg px-2.5 py-1.5 text-xs font-semibold text-tinta-500 hover:bg-tinta-100"

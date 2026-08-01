@@ -217,6 +217,46 @@ export async function salvarGrupoAction(entrada: unknown): Promise<Resposta> {
   return { ok: true }
 }
 
+const esquemaReordenacao = z.object({
+  produto_id: z.string().uuid(),
+  // a ordem final, do primeiro ao último grupo
+  ids: z.array(z.string().uuid()).min(1).max(40),
+})
+
+/** Recebe os grupos já na ordem desejada (arrasto ou setinhas do painel). */
+export async function reordenarGruposAction(entrada: unknown): Promise<Resposta> {
+  const bloqueio = await garantirDono()
+  if (bloqueio) return { ok: false, erro: bloqueio }
+
+  const analise = esquemaReordenacao.safeParse(entrada)
+  if (!analise.success) {
+    return { ok: false, erro: 'Não entendi a nova ordem dos grupos.' }
+  }
+  const { produto_id, ids } = analise.data
+
+  const supabase = criarClienteAdmin()
+
+  // só reordena o que é deste produto: id de fora da lista é ignorado
+  const { data: donos } = await supabase
+    .from('grupos_opcoes')
+    .select('id')
+    .eq('produto_id', produto_id)
+  const validos = new Set((donos ?? []).map((g) => g.id))
+
+  for (const [indice, id] of ids.entries()) {
+    if (!validos.has(id)) continue
+    const { error } = await supabase
+      .from('grupos_opcoes')
+      .update({ ordem: indice + 1 })
+      .eq('id', id)
+    if (error) return { ok: false, erro: 'Não consegui salvar a nova ordem.' }
+  }
+
+  atualizarTelas()
+  revalidatePath(`/admin/cardapio/${produto_id}`)
+  return { ok: true }
+}
+
 export async function excluirGrupoAction(id: string, produtoId: string): Promise<Resposta> {
   const bloqueio = await garantirDono()
   if (bloqueio) return { ok: false, erro: bloqueio }
