@@ -49,8 +49,15 @@ export function EscolhaModo({
     // cabeçalho preto, que em alguns celulares deixava uma linha clara.
     <section className="bg-carvao-900 relative -mx-4 -mt-px flex min-h-[calc(100dvh-8.5rem)] flex-col justify-center overflow-hidden px-5 py-10">
       <div aria-hidden className="absolute inset-0">
+        {/* É o maior elemento da primeira tela (LCP): sem a prioridade alta o
+            navegador só descobre a foto tarde demais e o site parece lento. */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={fachadaUrl} alt="" className="h-full w-full object-cover" />
+        <img
+          src={fachadaUrl}
+          alt=""
+          fetchPriority="high"
+          className="h-full w-full object-cover"
+        />
         {/* A camada preta tem duas partes: uma chapada, que garante contraste
             mínimo em qualquer foto — inclusive nas que o dono subir depois —,
             e um degradê que fecha as pontas sem apagar a foto no meio. */}
@@ -160,7 +167,8 @@ function Opcao({
       </span>
       <span className="min-w-0">
         <span className="block font-bold">{titulo}</span>
-        <span className={`block text-sm ${noRestaurante ? 'text-white/80' : 'text-carvao-900/70'}`}>
+        {/* branco cheio: a 80% sobre o vermelho da marca faltava contraste */}
+        <span className={`block text-sm ${noRestaurante ? 'text-white' : 'text-carvao-900/70'}`}>
           {descricao}
         </span>
       </span>

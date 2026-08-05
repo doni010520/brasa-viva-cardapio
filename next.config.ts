@@ -12,6 +12,23 @@ const nextConfig: NextConfig = {
   },
 
   poweredByHeader: false,
+
+  // Imagens e ícones do public/ mudam raramente; sem isso o navegador
+  // re-baixa ~100 KB por visita. 30 dias equilibra: longo para o dia a dia,
+  // curto o bastante para uma troca de foto aparecer sem chorar cache.
+  async headers() {
+    return [
+      {
+        source: '/:all*(webp|png|jpg|jpeg|svg|ico)',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=2592000, stale-while-revalidate=86400',
+          },
+        ],
+      },
+    ]
+  },
 }
 
 export default nextConfig

@@ -133,7 +133,7 @@ export default async function LayoutLoja({ children }: { children: React.ReactNo
                 <Lock className="h-4 w-4" />
                 Acesso da equipe
               </Link>
-              <p className="mt-1.5 text-xs text-tinta-400">
+              <p className="mt-1.5 text-xs text-tinta-500">
                 Só para quem trabalha na {config.nome}.
               </p>
             </div>
