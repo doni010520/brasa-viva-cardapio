@@ -110,9 +110,17 @@ export default async function PaginaPedido({ params }: { params: Promise<{ id: s
               ? 'A tentativa anterior não foi aprovada. Você pode tentar de novo.'
               : 'Seu pedido só entra na fila da cozinha depois do pagamento.'}
           </p>
-          <Link href={`/pedido/${pedido.id}/pagamento`} className="mt-3 inline-block">
-            <Botao>Pagar agora</Botao>
-          </Link>
+          {/* InfinitePay: o link de pagamento já existe, é só voltar para ele.
+              Sem link (fluxo Mercado Pago), a tela de pagamento é interna. */}
+          {pedido.ip_link_url ? (
+            <a href={pedido.ip_link_url} className="mt-3 inline-block">
+              <Botao>Pagar agora</Botao>
+            </a>
+          ) : (
+            <Link href={`/pedido/${pedido.id}/pagamento`} className="mt-3 inline-block">
+              <Botao>Pagar agora</Botao>
+            </Link>
+          )}
         </Cartao>
       ) : (
         <Cartao className="mt-6 p-4">

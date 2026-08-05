@@ -3,6 +3,7 @@ import { FormularioCheckout } from '@/components/loja/formulario-checkout'
 import { Botao, Vazio } from '@/components/ui'
 import { buscarBairros, buscarConfiguracoes, buscarHorarios } from '@/lib/dados'
 import { cadastroDoClienteLogado } from '@/lib/cliente-sessao'
+import { infinitePayConfigurado } from '@/lib/infinitepay'
 import { mercadoPagoConfigurado } from '@/lib/mercadopago'
 import { mesaAtual, modoAtual } from '@/lib/modo'
 import { estadoDaLoja, horariosDeRetirada } from '@/lib/tempo'
@@ -40,7 +41,9 @@ export default async function PaginaCheckout() {
       pedirAniversario={config.pedir_aniversario}
       brindeAniversario={config.brinde_aniversario}
       pedidoMinimoCentavos={config.pedido_minimo_centavos}
-      aceitaOnline={config.aceita_pagamento_online && mercadoPagoConfigurado()}
+      aceitaOnline={
+        config.aceita_pagamento_online && (infinitePayConfigurado() || mercadoPagoConfigurado())
+      }
       aceitaLocal={config.aceita_pagamento_local}
       aceitaRetirada={config.aceita_retirada}
       aceitaEntrega={config.aceita_entrega && bairros.length > 0}

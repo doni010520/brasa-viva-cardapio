@@ -2,6 +2,7 @@ import { z } from "zod";
 import { buscarConfiguracoes, buscarHorarios } from "./dados";
 import { consumirCupom, validarCupom } from "./cupons";
 import { conferirItens, type ItemEnviado } from "./montar-pedido";
+import { criarLinkInfinitePay, infinitePayConfigurado } from "./infinitepay";
 import { mercadoPagoConfigurado, urlBase } from "./mercadopago";
 import { criarClienteAdmin } from "./supabase/server";
 import { estadoDaLoja } from "./tempo";
@@ -173,7 +174,11 @@ export async function criarPedido(
       erro: "Pedido para entrega precisa ser pago pelo site. Dinheiro só na retirada no balcão.",
     };
   }
-  if (dados.formaPagamento === "online" && !mercadoPagoConfigurado()) {
+  if (
+    dados.formaPagamento === "online" &&
+    !infinitePayConfigurado() &&
+    !mercadoPagoConfigurado()
+  ) {
     return {
       ok: false,
       erro: "O pagamento online ainda não foi configurado. Escolha pagar na entrega/retirada.",
@@ -288,8 +293,37 @@ export async function criarPedido(
     };
   }
 
-  // Pagamento online: o pedido já existe como "aguardando_pagamento" e o cliente
-  // segue para a tela de pagamento DENTRO do app (Pix, cartão ou boleto).
+  // Pagamento online pela InfinitePay: o cliente sai para o checkout deles e
+  // volta para o acompanhamento. O link fica gravado no pedido — é o que
+  // alimenta o "Pagar agora" de quem fechou a aba no meio do caminho.
+  if (infinitePayConfigurado()) {
+    try {
+      const link = await criarLinkInfinitePay(pedido, config.nome);
+      await supabase
+        .from("pedidos")
+        .update({ ip_link_url: link.url, ip_slug: link.slug })
+        .eq("id", pedido.id);
+
+      return {
+        ok: true,
+        pedidoId: pedido.id,
+        numero: pedido.numero,
+        totalCentavos: pedido.total_centavos,
+        destino: link.url,
+        externo: true,
+      };
+    } catch (erro) {
+      console.error("[checkout] falha ao criar o link InfinitePay", erro);
+      // pedido sem como pagar não pode ficar poluindo o painel da cozinha
+      await supabase.from("pedidos").delete().eq("id", pedido.id);
+      return {
+        ok: false,
+        erro: "Não consegui iniciar o pagamento online. Tente de novo ou pague na retirada.",
+      };
+    }
+  }
+
+  // Mercado Pago (Checkout Transparente): a tela de pagamento DENTRO do app.
   return {
     ok: true,
     pedidoId: pedido.id,

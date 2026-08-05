@@ -91,6 +91,17 @@ TOKEN_IMPRESSAO=<invente uma senha longa; a mesma vai no agente do restaurante>
 Sim, as `NEXT_PUBLIC_*` aparecem **nos dois lugares**. No Build para entrarem
 no código do navegador; no Environment para o servidor também enxergar.
 
+Para ligar o **pagamento online pela InfinitePay**, basta a InfiniteTag da
+conta (o "$nome" no app deles, com ou sem o $) — sem chave secreta:
+
+```
+INFINITEPAY_HANDLE=$suatag
+```
+
+> Mudou a variável? Environment aplica no restart — clique em Deploy.
+> O webhook deles é configurado sozinho, link a link; nada a cadastrar no
+> painel da InfinitePay.
+
 Deixe em branco por enquanto (o app funciona sem):
 
 ```

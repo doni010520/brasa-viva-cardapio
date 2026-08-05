@@ -252,6 +252,11 @@ export type Pedido = {
   endereco_referencia: string | null
   mp_preference_id: string | null
   mp_payment_id: string | null
+  // pagamento pela InfinitePay (checkout por link)
+  ip_link_url: string | null
+  ip_slug: string | null
+  ip_transaction_nsu: string | null
+  ip_receipt_url: string | null
   // pagamento por API
   cliente_email: string | null
   cliente_cpf: string | null

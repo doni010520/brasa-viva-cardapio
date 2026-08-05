@@ -25,6 +25,7 @@ export async function GET() {
       chave_de_servico: Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY),
       url_base: urlBase || '(vazia — vai usar o host da requisição)',
       url_base_e_producao: urlBase.startsWith('https://'),
+      infinite_pay: Boolean(process.env.INFINITEPAY_HANDLE),
       mercado_pago: Boolean(process.env.MP_ACCESS_TOKEN),
       mercado_pago_navegador: Boolean(process.env.NEXT_PUBLIC_MP_PUBLIC_KEY),
       webhook_assinado: Boolean(process.env.MP_WEBHOOK_SECRET),
