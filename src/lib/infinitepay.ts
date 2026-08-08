@@ -38,6 +38,36 @@ type PedidoParaLink = {
   cliente_nome: string
   cliente_email: string | null
   cliente_telefone: string
+  tipo_entrega: 'local' | 'retirada' | 'entrega'
+  endereco_rua: string | null
+  endereco_numero: string | null
+  endereco_complemento: string | null
+  endereco_bairro: string | null
+}
+
+/**
+ * Endereço que vai no link SÓ para o checkout deles não abrir a etapa
+ * "Entrega" — quem cuida de entrega é o nosso site. Pedido de entrega leva
+ * o endereço do cliente; retirada e mesa levam o da própria churrascaria.
+ * O CEP é sempre o da loja: o site não pede CEP do cliente (bairro fechado
+ * resolve a taxa), e o campo ali é decorativo.
+ */
+function enderecoParaLink(pedido: PedidoParaLink) {
+  if (pedido.tipo_entrega === 'entrega' && pedido.endereco_rua) {
+    return {
+      cep: '42850000',
+      street: pedido.endereco_rua,
+      number: pedido.endereco_numero ?? 's/n',
+      neighborhood: pedido.endereco_bairro ?? 'Centro',
+      ...(pedido.endereco_complemento ? { complement: pedido.endereco_complemento } : {}),
+    }
+  }
+  return {
+    cep: '42850000',
+    street: 'Rua Padre Camilo Torrent',
+    number: '557',
+    neighborhood: 'Cristo Rei',
+  }
 }
 
 /** Cria o link de pagamento e devolve a URL para onde mandar o cliente. */
@@ -73,6 +103,7 @@ export async function criarLinkInfinitePay(
           ? { phone_number: `+55${telefone.replace(/^55/, '')}` }
           : {}),
       },
+      address: enderecoParaLink(pedido),
     }),
     signal: AbortSignal.timeout(15000),
   })
