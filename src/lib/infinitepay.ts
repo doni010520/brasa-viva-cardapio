@@ -94,7 +94,10 @@ export async function criarLinkInfinitePay(
           description: `Pedido #${String(pedido.numero).padStart(3, '0')} — ${nomeLoja}`,
         },
       ],
-      redirect_url: `${base}/pedido/${pedido.id}`,
+      // volta na página do "obrigado": é ela que confirma o pagamento na hora
+      // (pelos parâmetros que a InfinitePay anexa) e mostra a campanha do
+      // Instagram — o momento feliz do cliente não pode cair numa tela burocrática
+      redirect_url: `${base}/pedido/${pedido.id}/obrigado`,
       webhook_url: `${base}/api/webhooks/infinitepay`,
       customer: {
         name: pedido.cliente_nome,

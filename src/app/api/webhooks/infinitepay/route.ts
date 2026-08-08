@@ -1,22 +1,20 @@
 import type { NextRequest } from 'next/server'
 import { z } from 'zod'
-import { consumirCupom } from '@/lib/cupons'
-import { buscarConfiguracoes } from '@/lib/dados'
-import { conferirPagamentoInfinitePay, infinitePayConfigurado } from '@/lib/infinitepay'
+import { confirmarPagamentoInfinitePay } from '@/lib/confirmar-infinitepay'
+import { infinitePayConfigurado } from '@/lib/infinitepay'
 import { criarClienteAdmin } from '@/lib/supabase/server'
-import { urlBase } from '@/lib/url'
-import { avisarPedidoConfirmado } from '@/lib/whatsapp'
+import type { Pedido } from '@/lib/types'
 
 /**
  * Webhook da InfinitePay.
  *
  * A InfinitePay não assina o aviso — qualquer um consegue chamar esta URL.
- * Por isso as regras de ouro daqui são ainda menos negociáveis que no
- * Mercado Pago:
- *  - o corpo do aviso NÃO é fonte de verdade: conferimos no payment_check;
- *  - o valor confirmado é comparado com o total do pedido;
- *  - respondemos 200 no caso ignorado e 400 quando queremos reenvio
- *    (é o contrato deles: "respondeu diferente de 200, tentamos de novo").
+ * Por isso o corpo NUNCA é fonte de verdade: a confirmação de verdade mora
+ * em confirmarPagamentoInfinitePay(), que pergunta ao payment_check e
+ * compara o valor. Este webhook é a garantia; a volta do cliente ao site
+ * confirma mais rápido e este aviso encontra o pedido já pago.
+ *
+ * Contrato deles: resposta 200 encerra; diferente de 200 é reenviado.
  */
 
 const esquemaAviso = z.object({
@@ -51,63 +49,26 @@ export async function POST(request: NextRequest) {
   if (!pedido) {
     return Response.json({ ignorado: 'pedido não encontrado' }, { status: 200 })
   }
-  if (pedido.status_pagamento === 'pago') {
-    return Response.json({ ok: true, nota: 'já estava pago' }, { status: 200 })
+
+  const resultado = await confirmarPagamentoInfinitePay(
+    pedido as Pedido,
+    aviso.transaction_nsu,
+    slug,
+    aviso.receipt_url ?? null
+  )
+
+  switch (resultado) {
+    case 'pago':
+      return Response.json({ ok: true }, { status: 200 })
+    case 'ja-estava-pago':
+      return Response.json({ ok: true, nota: 'já estava pago' }, { status: 200 })
+    case 'nao-pago':
+      return Response.json({ ok: true, nota: 'ainda não consta como pago' }, { status: 200 })
+    case 'divergente':
+      return Response.json({ erro: 'valor divergente' }, { status: 200 })
+    case 'falha-consulta':
+      return Response.json({ erro: 'falha ao conferir' }, { status: 400 }) // deixa reenviar
   }
-
-  // fonte de verdade: perguntar à InfinitePay, nunca acreditar no aviso
-  let conferencia
-  try {
-    conferencia = await conferirPagamentoInfinitePay({
-      orderNsu: aviso.order_nsu,
-      transactionNsu: aviso.transaction_nsu,
-      slug,
-    })
-  } catch (erro) {
-    console.error('[webhook infinitepay] falha ao conferir o pagamento', erro)
-    return Response.json({ erro: 'falha ao conferir' }, { status: 400 }) // deixa reenviar
-  }
-
-  if (!conferencia.pago) {
-    return Response.json({ ok: true, nota: 'ainda não consta como pago' }, { status: 200 })
-  }
-  if (conferencia.valorCentavos < pedido.total_centavos) {
-    console.error(
-      `[webhook infinitepay] valor divergente no pedido ${pedido.id}: pago ${conferencia.valorCentavos}, devido ${pedido.total_centavos}`
-    )
-    return Response.json({ erro: 'valor divergente' }, { status: 200 })
-  }
-
-  await supabase
-    .from('pedidos')
-    .update({
-      status_pagamento: 'pago',
-      metodo_pagamento: conferencia.metodo,
-      ip_slug: slug,
-      ip_transaction_nsu: aviso.transaction_nsu,
-      ip_receipt_url: aviso.receipt_url ?? null,
-      status: pedido.status === 'aguardando_pagamento' ? 'recebido' : pedido.status,
-    })
-    .eq('id', pedido.id)
-
-  await supabase.from('pedido_eventos').insert({
-    pedido_id: pedido.id,
-    de: pedido.status,
-    para: 'recebido',
-    origem: 'webhook',
-  })
-
-  await consumirCupom(pedido.cupom_codigo)
-
-  // aviso é bônus: falha no WhatsApp não desfaz um pagamento confirmado
-  try {
-    const [config, base] = await Promise.all([buscarConfiguracoes(), urlBase()])
-    await avisarPedidoConfirmado(pedido, config.nome, `${base}/pedido/${pedido.id}`)
-  } catch (erro) {
-    console.warn('[webhook infinitepay] não consegui avisar o cliente', erro)
-  }
-
-  return Response.json({ ok: true }, { status: 200 })
 }
 
 /** Dá para conferir a URL no navegador sem disparar nada. */

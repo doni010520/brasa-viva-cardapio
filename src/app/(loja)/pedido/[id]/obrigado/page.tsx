@@ -4,6 +4,7 @@ import { notFound, redirect } from 'next/navigation'
 import { Camera, Check, Receipt } from 'lucide-react'
 import { ModalCampanha } from '@/components/loja/modal-campanha'
 import { Botao, Cartao } from '@/components/ui'
+import { confirmarPagamentoInfinitePay } from '@/lib/confirmar-infinitepay'
 import { buscarConfiguracoes, buscarPedido } from '@/lib/dados'
 import { moeda } from '@/lib/format'
 
@@ -15,10 +16,26 @@ export const dynamic = 'force-dynamic'
  * É o único momento em que ele está feliz, com o celular na mão e sem pressa —
  * por isso a campanha do restaurante mora aqui, e não perdida no rodapé.
  */
-export default async function PaginaObrigado({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params
-  const [pedido, config] = await Promise.all([buscarPedido(id), buscarConfiguracoes()])
+export default async function PaginaObrigado({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>
+  searchParams: Promise<Record<string, string | string[] | undefined>>
+}) {
+  const [{ id }, consulta] = await Promise.all([params, searchParams])
+  let [pedido, config] = await Promise.all([buscarPedido(id), buscarConfiguracoes()])
   if (!pedido) notFound()
+
+  // A volta da InfinitePay traz transaction_nsu e slug na URL: dá para
+  // confirmar AGORA, sem esperar o webhook — o cliente já vê a festa.
+  const transactionNsu = typeof consulta.transaction_nsu === 'string' ? consulta.transaction_nsu : null
+  const slug = typeof consulta.slug === 'string' ? consulta.slug : null
+  const reciboUrl = typeof consulta.receipt_url === 'string' ? consulta.receipt_url : null
+  if (pedido.status_pagamento !== 'pago' && transactionNsu && slug) {
+    const resultado = await confirmarPagamentoInfinitePay(pedido, transactionNsu, slug, reciboUrl)
+    if (resultado === 'pago') pedido = (await buscarPedido(id)) ?? pedido
+  }
 
   // ainda não pagou: não há o que agradecer
   if (pedido.status_pagamento !== 'pago' && pedido.forma_pagamento === 'online') {
