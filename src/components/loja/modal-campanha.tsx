@@ -39,7 +39,6 @@ export function ModalCampanha({
   emoji,
   rotuloBotao,
   instagramUrl,
-  nomeLoja,
 }: {
   pedidoId: string
   titulo: string
@@ -47,7 +46,6 @@ export function ModalCampanha({
   emoji: string
   rotuloBotao: string
   instagramUrl: string
-  nomeLoja: string
 }) {
   const [aberto, setAberto] = useState(false)
   const fechar = useRef<HTMLButtonElement>(null)
@@ -166,7 +164,6 @@ export function ModalCampanha({
               {rotuloBotao}
             </Botao>
           </a>
-          <p className="mt-2 text-xs text-tinta-400">Abre o Instagram da {nomeLoja}</p>
 
           <button
             type="button"

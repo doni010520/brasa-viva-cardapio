@@ -79,7 +79,6 @@ export default async function PaginaObrigado({
           emoji={config.campanha_emoji ?? '🍫'}
           rotuloBotao={config.campanha_botao ?? 'Quero meu bombom'}
           instagramUrl={config.instagram_url!}
-          nomeLoja={config.nome}
         />
       )}
 
@@ -106,8 +105,6 @@ export default async function PaginaObrigado({
                 {config.campanha_botao ?? 'Quero meu bombom'}
               </Botao>
             </a>
-
-            <p className="mt-2 text-xs text-tinta-400">Abre o Instagram da {config.nome}</p>
           </div>
         </Cartao>
       )}
