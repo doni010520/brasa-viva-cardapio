@@ -1,3 +1,5 @@
+import type { NextRequest } from 'next/server'
+import { criarLinkInfinitePay, infinitePayConfigurado } from '@/lib/infinitepay'
 import { urlBaseConfigurada } from '@/lib/url'
 /**
  * Sinal de vida e diagnóstico do deploy.
@@ -12,8 +14,46 @@ import { urlBaseConfigurada } from '@/lib/url'
  */
 export const dynamic = 'force-dynamic'
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   const urlBase = urlBaseConfigurada()
+
+  // Diagnóstico da InfinitePay DE DENTRO do servidor: tenta criar um link de
+  // mentira e devolve o erro cru. Protegido pelo mesmo token da impressão,
+  // porque o erro pode citar detalhes internos. Link criado não custa nada.
+  const diag = request.nextUrl.searchParams.get('infinitepay')
+  if (diag && process.env.TOKEN_IMPRESSAO && diag === process.env.TOKEN_IMPRESSAO) {
+    if (!infinitePayConfigurado()) {
+      return Response.json({ diagnostico: 'INFINITEPAY_HANDLE não configurado' })
+    }
+    try {
+      const link = await criarLinkInfinitePay(
+        {
+          id: crypto.randomUUID(),
+          numero: 0,
+          total_centavos: 100,
+          cliente_nome: 'Diagnostico Saude',
+          cliente_email: null,
+          cliente_telefone: '71999990000',
+          tipo_entrega: 'retirada',
+          endereco_rua: null,
+          endereco_numero: null,
+          endereco_complemento: null,
+          endereco_bairro: null,
+        },
+        'Diagnostico'
+      )
+      return Response.json({ diagnostico: 'ok', url: link.url })
+    } catch (erro) {
+      return Response.json({
+        diagnostico: 'falhou',
+        erro: erro instanceof Error ? `${erro.name}: ${erro.message}` : String(erro),
+        causa:
+          erro instanceof Error && erro.cause
+            ? String(erro.cause).slice(0, 300)
+            : null,
+      })
+    }
+  }
 
   return Response.json({
     ok: true,
