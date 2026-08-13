@@ -78,6 +78,15 @@ export async function criarLinkInfinitePay(
   const base = await urlBase()
 
   const telefone = apenasDigitos(pedido.cliente_telefone)
+
+  // O checkout deles EXIGE e-mail, mas no nosso site ele é opcional de
+  // propósito. Quem informou leva o próprio (recibo da InfinitePay chega
+  // nele); quem não informou leva um coringa único por pedido, só para o
+  // formulário não travar o cliente na frente do caixa.
+  const dominio = new URL(base).hostname
+  const email =
+    pedido.cliente_email || `pedido-${String(pedido.numero).padStart(3, '0')}@${dominio}`
+
   const resposta = await fetch(`${API}/links`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -101,7 +110,7 @@ export async function criarLinkInfinitePay(
       webhook_url: `${base}/api/webhooks/infinitepay`,
       customer: {
         name: pedido.cliente_nome,
-        ...(pedido.cliente_email ? { email: pedido.cliente_email } : {}),
+        email,
         ...(telefone.length >= 10
           ? { phone_number: `+55${telefone.replace(/^55/, '')}` }
           : {}),
