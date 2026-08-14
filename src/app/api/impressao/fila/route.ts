@@ -1,7 +1,7 @@
 import type { NextRequest } from 'next/server'
 import { z } from 'zod'
 import { buscarConfiguracoes } from '@/lib/dados'
-import { comandaEscpos } from '@/lib/escpos'
+import { comandaEscpos, reciboEscpos } from '@/lib/escpos'
 import { criarClienteAdmin } from '@/lib/supabase/server'
 import type { Pedido } from '@/lib/types'
 
@@ -75,7 +75,16 @@ export async function GET(request: NextRequest) {
     }
 
     const pedido = data as Pedido
-    const bytes = comandaEscpos(pedido, config.nome, config.cnpj)
+    // 'recibo' é a via do cliente (comprovante de consumo); o resto é cozinha
+    const bytes =
+      trabalho.via === 'recibo'
+        ? reciboEscpos(pedido, {
+            nome: config.nome,
+            cnpj: config.cnpj,
+            endereco: config.endereco,
+            telefone: config.telefone,
+          })
+        : comandaEscpos(pedido, config.nome, config.cnpj)
 
     comandas.push({
       id: trabalho.id,

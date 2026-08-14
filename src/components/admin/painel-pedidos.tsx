@@ -18,7 +18,11 @@ import {
   UtensilsCrossed,
   X,
 } from 'lucide-react'
-import { mudarStatusAction, reimprimirAction } from '@/app/admin/(painel)/acoes'
+import {
+  imprimirReciboAction,
+  mudarStatusAction,
+  reimprimirAction,
+} from '@/app/admin/(painel)/acoes'
 import { Botao, Cartao, Selo, Vazio } from '@/components/ui'
 import { linkWhatsapp, moeda } from '@/lib/format'
 import { haQuantoTempo, horaCurta } from '@/lib/tempo'
@@ -100,6 +104,7 @@ function CartaoPedido({ pedido }: { pedido: Pedido }) {
   const [salvando, salvar] = useTransition()
   const [reenfileirando, reenfileirar] = useTransition()
   const [reimpresso, setReimpresso] = useState(false)
+  const [reciboEnviado, setReciboEnviado] = useState(false)
   const [erro, setErro] = useState('')
   const [expandido, setExpandido] = useState(true)
 
@@ -111,6 +116,18 @@ function CartaoPedido({ pedido }: { pedido: Pedido }) {
       else {
         setReimpresso(true)
         setTimeout(() => setReimpresso(false), 3000)
+      }
+    })
+  }
+
+  function imprimirRecibo() {
+    setErro('')
+    reenfileirar(async () => {
+      const resposta = await imprimirReciboAction(pedido.id)
+      if (!resposta.ok) setErro(resposta.erro)
+      else {
+        setReciboEnviado(true)
+        setTimeout(() => setReciboEnviado(false), 3000)
       }
     })
   }
@@ -264,6 +281,16 @@ function CartaoPedido({ pedido }: { pedido: Pedido }) {
                 <Printer className="h-3.5 w-3.5" />
               )}
               {reimpresso ? 'Enviado!' : 'Reimprimir'}
+            </button>
+
+            <button
+              onClick={imprimirRecibo}
+              disabled={reenfileirando}
+              className="flex items-center gap-1 font-medium text-tinta-600 hover:underline disabled:opacity-50"
+              title="Imprime o comprovante de consumo do cliente (cupom não fiscal)"
+            >
+              <FileText className="h-3.5 w-3.5" />
+              {reciboEnviado ? 'Enviado!' : 'Recibo'}
             </button>
 
             <Link

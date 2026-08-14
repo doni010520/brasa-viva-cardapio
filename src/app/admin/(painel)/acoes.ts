@@ -111,6 +111,30 @@ export async function reimprimirAction(pedidoId: string): Promise<Resposta> {
   return { ok: true }
 }
 
+/**
+ * O comprovante de consumo do cliente — a "notinha do almoço" que a pessoa
+ * anexa no reembolso da empresa. Sai na mesma térmica, com layout próprio
+ * (CNPJ, endereço, itens com valores, forma de pagamento e o aviso de
+ * cupom não fiscal).
+ */
+export async function imprimirReciboAction(pedidoId: string): Promise<Resposta> {
+  try {
+    await exigirAdmin()
+  } catch {
+    return { ok: false, erro: 'Sessão expirada. Entre de novo.' }
+  }
+
+  const supabase = criarClienteAdmin()
+  const { error } = await supabase
+    .from('impressoes')
+    .insert({ pedido_id: pedidoId, via: 'recibo' })
+
+  if (error) return { ok: false, erro: 'Não consegui enfileirar o recibo.' }
+
+  revalidatePath('/admin')
+  return { ok: true }
+}
+
 /** Chave geral: fecha a loja na hora, mesmo dentro do horário. */
 export async function alternarLojaAction(aberta: boolean): Promise<Resposta> {
   try {

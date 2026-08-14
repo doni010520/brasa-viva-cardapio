@@ -216,3 +216,78 @@ export function comandaEscpos(
 
   return f.bytes()
 }
+
+/**
+ * Recibo do CLIENTE — o comprovante de consumo que a pessoa anexa no
+ * reembolso da empresa ("a notinha do almoço"). Diferente da comanda da
+ * cozinha, aqui o que importa é identificar a casa (CNPJ, endereço),
+ * detalhar o que foi consumido com valores e dizer como foi pago.
+ * É e sempre será NÃO fiscal: o cupom diz isso em duas linhas.
+ */
+export function reciboEscpos(
+  pedido: Pedido,
+  loja: { nome: string; cnpj: string | null; endereco: string | null; telefone: string | null }
+): Uint8Array {
+  const f = new Fita()
+  const codigo = String(pedido.numero).padStart(3, '0')
+
+  f.cmd(INICIALIZA).cmd(ALINHA_CENTRO)
+
+  f.cmd(NEGRITO_ON).linha(loja.nome.toUpperCase()).cmd(NEGRITO_OFF)
+  if (loja.cnpj) f.linha(`CNPJ ${loja.cnpj}`)
+  if (loja.endereco) f.paragrafo(loja.endereco)
+  if (loja.telefone) f.linha(`Tel: ${loja.telefone}`)
+
+  f.divisor()
+  f.cmd(NEGRITO_ON).cmd(TAMANHO_ALTO).linha('COMPROVANTE DE CONSUMO').cmd(TAMANHO_NORMAL)
+  f.linha('*** CUPOM NAO FISCAL ***').cmd(NEGRITO_OFF)
+  f.linha('Documento sem valor fiscal')
+  f.divisor('=')
+
+  f.cmd(ALINHA_ESQ)
+  f.linhaDupla(`Pedido #${codigo}`, dataHoraCurta(pedido.criado_em))
+  f.linha(`Cliente: ${pedido.cliente_nome}`)
+  f.divisor()
+
+  for (const item of pedido.itens ?? []) {
+    f.linhaDupla(`${item.quantidade}x ${semAcento(item.produto_nome)}`, moeda(item.total_centavos))
+    for (const opcao of item.opcoes) {
+      // no recibo só interessa o que mudou o preço
+      if (opcao.preco_extra_centavos > 0) {
+        f.linhaDupla(`   + ${semAcento(rotuloOpcao(opcao))}`, moeda(extraDaOpcao(opcao)))
+      }
+    }
+  }
+
+  f.divisor()
+  f.linhaDupla('Subtotal', moeda(pedido.subtotal_centavos))
+  if (pedido.desconto_centavos > 0) {
+    f.linhaDupla('Desconto', `-${moeda(pedido.desconto_centavos)}`)
+  }
+  if (pedido.entrega_taxa_centavos > 0) {
+    f.linhaDupla('Taxa de entrega', moeda(pedido.entrega_taxa_centavos))
+  }
+  f.cmd(NEGRITO_ON).linhaDupla('TOTAL', moeda(pedido.total_centavos)).cmd(NEGRITO_OFF)
+
+  const metodo =
+    pedido.metodo_pagamento === 'pix'
+      ? 'Pix'
+      : pedido.metodo_pagamento === 'credit_card'
+        ? 'Cartao de credito'
+        : pedido.forma_pagamento === 'online'
+          ? 'Online'
+          : 'No balcao'
+  f.linhaDupla(
+    `Pagamento: ${metodo}`,
+    pedido.status_pagamento === 'pago' ? 'PAGO' : 'PENDENTE'
+  )
+
+  f.divisor('=')
+  f.cmd(ALINHA_CENTRO)
+  f.linha('Obrigado pela preferencia!')
+
+  f.linha().linha().linha()
+  f.cmd(CORTAR)
+
+  return f.bytes()
+}
