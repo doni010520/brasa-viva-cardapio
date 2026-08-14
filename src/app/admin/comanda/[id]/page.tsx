@@ -29,7 +29,9 @@ export default async function PaginaComanda({ params }: { params: Promise<{ id: 
       {/* ---------- cabeçalho ---------- */}
       <div className="text-center">
         <p className="text-base font-bold uppercase">{config.nome}</p>
+        {config.cnpj && <p className="text-[11px]">CNPJ {config.cnpj}</p>}
         <p className="text-[11px]">{dataHoraCurta(pedido.criado_em)}</p>
+        <p className="text-[11px] font-bold">*** CUPOM NÃO FISCAL ***</p>
       </div>
 
       <Divisor />

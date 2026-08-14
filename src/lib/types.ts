@@ -73,6 +73,8 @@ export type Configuracoes = {
   endereco: string | null
   /** Link do Google Maps: transforma a linha de endereço do rodapé em link. */
   endereco_url: string | null
+  /** Sai impresso no cupom (que é sempre NÃO fiscal). */
+  cnpj: string | null
   aberto_manual: boolean
   tempo_preparo_min: number
   /** Agente de IA que atende pelo WhatsApp. Nasce desligado. */

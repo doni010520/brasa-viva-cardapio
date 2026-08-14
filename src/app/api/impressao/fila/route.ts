@@ -75,7 +75,7 @@ export async function GET(request: NextRequest) {
     }
 
     const pedido = data as Pedido
-    const bytes = comandaEscpos(pedido, config.nome)
+    const bytes = comandaEscpos(pedido, config.nome, config.cnpj)
 
     comandas.push({
       id: trabalho.id,

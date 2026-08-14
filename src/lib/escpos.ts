@@ -112,7 +112,11 @@ class Fita {
 }
 
 /** Comanda da cozinha. Grande onde importa: número, mesa e observações. */
-export function comandaEscpos(pedido: Pedido, nomeLoja: string): Uint8Array {
+export function comandaEscpos(
+  pedido: Pedido,
+  nomeLoja: string,
+  cnpj?: string | null
+): Uint8Array {
   const f = new Fita()
   const codigo = String(pedido.numero).padStart(3, '0')
   const ondeVai =
@@ -125,7 +129,9 @@ export function comandaEscpos(pedido: Pedido, nomeLoja: string): Uint8Array {
   f.cmd(INICIALIZA).cmd(ALINHA_CENTRO)
 
   f.cmd(NEGRITO_ON).linha(nomeLoja.toUpperCase()).cmd(NEGRITO_OFF)
+  if (cnpj) f.linha(`CNPJ ${cnpj}`)
   f.linha(dataHoraCurta(pedido.criado_em))
+  f.linha('*** CUPOM NAO FISCAL ***')
   f.divisor('=')
 
   // o número e o destino são o que o cozinheiro procura de longe

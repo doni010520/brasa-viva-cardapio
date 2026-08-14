@@ -16,6 +16,7 @@ const esquemaConfig = z.object({
   telefone: z.string().trim().max(20).optional(),
   whatsapp: z.string().trim().max(20).optional(),
   endereco: z.string().trim().max(200).optional(),
+  cnpj: z.string().trim().max(20).optional(),
   // links do Google Maps vêm compridos, com dezenas de parâmetros — o teto é largo
   endereco_url: z
     .string()
@@ -91,6 +92,7 @@ export async function salvarConfiguracoesAction(entrada: unknown): Promise<Respo
       whatsapp: dados.whatsapp || null,
       endereco: dados.endereco || null,
       endereco_url: dados.endereco_url || null,
+      cnpj: dados.cnpj || null,
       chave_pix: dados.chave_pix || null,
       entrega_gratis_acima_centavos: dados.entrega_gratis_acima_centavos || null,
       instagram_url: dados.instagram_url || null,

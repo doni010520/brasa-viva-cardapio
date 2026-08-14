@@ -89,6 +89,7 @@ function BlocoLoja({
     whatsapp: config.whatsapp ?? '',
     endereco: config.endereco ?? '',
     endereco_url: config.endereco_url ?? '',
+    cnpj: config.cnpj ?? '',
     tempo_preparo_min: String(config.tempo_preparo_min),
     antecedencia_min: String(config.antecedencia_min),
     pedido_minimo: centavosParaInput(config.pedido_minimo_centavos),
@@ -221,6 +222,19 @@ function BlocoLoja({
             onChange={(e) => mudar('endereco', e.target.value)}
             placeholder="Rua, número, bairro"
           />
+        </div>
+
+        <div>
+          <Rotulo htmlFor="cnpj">CNPJ</Rotulo>
+          <Campo
+            id="cnpj"
+            value={campos.cnpj}
+            onChange={(e) => mudar('cnpj', e.target.value)}
+            placeholder="00.000.000/0000-00"
+          />
+          <p className="mt-1 text-xs text-tinta-400">
+            Sai impresso no cupom da cozinha, junto do aviso de cupom não fiscal.
+          </p>
         </div>
 
         <div>
