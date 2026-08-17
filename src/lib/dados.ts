@@ -68,11 +68,17 @@ export async function buscarCardapio(
   if (erroCat) throw new Error(`Não consegui ler as categorias: ${erroCat.message}`)
   if (erroProd) throw new Error(`Não consegui ler os produtos: ${erroProd.message}`)
 
-  // 'ambos' passa sempre; os demais só no modo correspondente
-  const cabeNoModo = (p: Produto) =>
-    !modo ||
-    p.modo_consumo === 'ambos' ||
-    (modo === 'local' ? p.modo_consumo === 'so_local' : p.modo_consumo === 'so_viagem')
+  // 'ambos' passa sempre; os demais só no modo correspondente.
+  // 'interno' (quilo do balcão) nunca aparece para o cliente — só o
+  // painel enxerga, e ele chama com incluirInativos.
+  const cabeNoModo = (p: Produto) => {
+    if (p.modo_consumo === 'interno') return incluirInativos
+    return (
+      !modo ||
+      p.modo_consumo === 'ambos' ||
+      (modo === 'local' ? p.modo_consumo === 'so_local' : p.modo_consumo === 'so_viagem')
+    )
+  }
 
   const porCategoria = new Map<string, Produto[]>()
   for (const p of (produtos ?? []) as Produto[]) {

@@ -6,6 +6,7 @@ import {
   BarChart3,
   BookOpen,
   Bot,
+  Calculator,
   QrCode,
   Settings,
   Tag,
@@ -17,6 +18,7 @@ import {
 /** `soDono` esconde do atendente. A tranca de verdade está no servidor. */
 const ITENS = [
   { href: '/admin', rotulo: 'Pedidos', icone: UtensilsCrossed, soDono: false },
+  { href: '/admin/balcao', rotulo: 'Balcão', icone: Calculator, soDono: false },
   { href: '/admin/cardapio', rotulo: 'Cardápio', icone: BookOpen, soDono: false },
   { href: '/admin/clientes', rotulo: 'Clientes', icone: Users, soDono: true },
   { href: '/admin/mesas', rotulo: 'Mesas', icone: QrCode, soDono: true },

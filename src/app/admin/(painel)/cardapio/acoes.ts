@@ -112,7 +112,7 @@ const esquemaProduto = z.object({
    * está sentado no salão, e marmita embalada só faz sentido para quem vai
    * levar. Oferecer o item errado dá pedido que a casa não consegue entregar.
    */
-  modo_consumo: z.enum(['ambos', 'so_local', 'so_viagem']),
+  modo_consumo: z.enum(['ambos', 'so_local', 'so_viagem', 'interno']),
 })
 
 export async function salvarProdutoAction(entrada: unknown): Promise<Resposta<{ id: string }>> {

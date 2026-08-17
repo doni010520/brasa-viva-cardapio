@@ -6,7 +6,7 @@ import type { ItemCarrinho, OpcaoEscolhida } from '@/lib/types'
 
 const CHAVE = 'cardapio:carrinho:v1'
 
-type EntradaCarrinho = Omit<ItemCarrinho, 'linhaId'>
+export type EntradaCarrinho = Omit<ItemCarrinho, 'linhaId'>
 
 type CarrinhoContexto = {
   itens: ItemCarrinho[]

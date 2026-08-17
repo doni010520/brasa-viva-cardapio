@@ -54,8 +54,8 @@ export type Produto = {
   disponivel: boolean
   destaque: boolean
   ordem: number
-  /** 'ambos' | 'so_local' (buffet) | 'so_viagem' (marmita embalada) */
-  modo_consumo: 'ambos' | 'so_local' | 'so_viagem'
+  /** 'ambos' | 'so_local' (buffet) | 'so_viagem' (marmita) | 'interno' (só o balcão lança) */
+  modo_consumo: 'ambos' | 'so_local' | 'so_viagem' | 'interno'
   grupos_opcoes?: GrupoOpcoes[]
   secoes_opcoes?: SecaoOpcoes[]
 }
@@ -266,6 +266,8 @@ export type Pedido = {
   pix_copia_cola: string | null
   pix_expira_em: string | null
   pagamento_detalhe: string | null
+  /** 'site' (cliente pediu) ou 'balcao' (atendente lançou) */
+  origem: 'site' | 'balcao'
   criado_em: string
   atualizado_em: string
   itens?: PedidoItem[]

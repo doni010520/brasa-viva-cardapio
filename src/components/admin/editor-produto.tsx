@@ -221,13 +221,16 @@ export function EditorProduto({
               <option value="ambos">Nos dois — no restaurante e para viagem</option>
               <option value="so_local">Só no restaurante (buffet, consumo no salão)</option>
               <option value="so_viagem">Só para viagem (marmita, entrega e retirada)</option>
+              <option value="interno">Só o balcão lança (não aparece para o cliente)</option>
             </Selecao>
             <p className="mt-1 text-xs text-tinta-400">
               {modoConsumo === 'so_local'
                 ? 'Não aparece para quem pede de casa — ninguém vai levar buffet livre embora.'
                 : modoConsumo === 'so_viagem'
                   ? 'Não aparece para quem está sentado no salão.'
-                  : 'Aparece para todo mundo, esteja no salão ou pedindo de casa.'}
+                  : modoConsumo === 'interno'
+                    ? 'Invisível nos dois cardápios. Só existe para a atendente lançar pelo Balcão.'
+                    : 'Aparece para todo mundo, esteja no salão ou pedindo de casa.'}
             </p>
           </div>
 

@@ -136,7 +136,7 @@ export function comandaEscpos(
 
   // o número e o destino são o que o cozinheiro procura de longe
   f.cmd(TAMANHO_DOBRO).cmd(NEGRITO_ON).linha(`#${codigo}`).cmd(TAMANHO_NORMAL)
-  f.cmd(TAMANHO_ALTO).linha(ondeVai)
+  f.cmd(TAMANHO_ALTO).linha(pedido.origem === 'balcao' ? 'BALCAO' : ondeVai)
   if (pedido.mesa_numero) f.linha(`MESA ${pedido.mesa_numero}`)
   f.cmd(TAMANHO_NORMAL).cmd(NEGRITO_OFF)
 
@@ -144,7 +144,8 @@ export function comandaEscpos(
   f.cmd(ALINHA_ESQ)
 
   f.linha(`Cliente: ${pedido.cliente_nome}`)
-  f.linha(`Fone...: ${pedido.cliente_telefone}`)
+  // lançamento do balcão não tem telefone de verdade
+  if (pedido.origem !== 'balcao') f.linha(`Fone...: ${pedido.cliente_telefone}`)
   if (pedido.retirada_prevista) {
     f.linha(`${pedido.tipo_entrega === 'entrega' ? 'Previsto' : 'Retirada'}: ${horaCurta(pedido.retirada_prevista)}`)
   }

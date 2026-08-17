@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { Minus, Plus, X } from 'lucide-react'
-import { useCarrinho } from '@/components/carrinho-contexto'
+import { useCarrinho, type EntradaCarrinho } from '@/components/carrinho-contexto'
 import { AreaTexto, Botao } from '@/components/ui'
 import { moeda } from '@/lib/format'
 import { extraDaOpcao } from '@/lib/types'
@@ -12,12 +12,19 @@ export function ModalProduto({
   produto,
   lojaAberta,
   onFechar,
+  aoConfirmar,
 }: {
   produto: Produto
   lojaAberta: boolean
   onFechar: () => void
+  /**
+   * Quem recebe o item montado. Sem isso, vai para o carrinho do site.
+   * O balcão do painel passa a própria função: mesmo modal, mesmas regras
+   * de opções, mas o item vai para o lançamento da atendente.
+   */
+  aoConfirmar?: (item: EntradaCarrinho) => void
 }) {
-  const { adicionar } = useCarrinho()
+  const carrinho = useCarrinho()
   const [quantidade, setQuantidade] = useState(1)
   const [observacao, setObservacao] = useState('')
   // grupo_id -> ids das opções marcadas
@@ -145,7 +152,7 @@ export function ModalProduto({
 
   function confirmar() {
     if (!podeAdicionar) return
-    adicionar({
+    const item = {
       produtoId: produto.id,
       nome: produto.nome,
       imagemUrl: produto.imagem_url,
@@ -153,7 +160,9 @@ export function ModalProduto({
       opcoes: selecionadas,
       observacao,
       quantidade,
-    })
+    }
+    if (aoConfirmar) aoConfirmar(item)
+    else carrinho.adicionar(item)
     onFechar()
   }
 
