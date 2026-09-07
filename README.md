@@ -127,6 +127,36 @@ Chamar duas vezes no mesmo dia não manda mensagem repetida: o ano do último pa
 gravado, e a marca é feita antes do envio — se a uazapi cair no meio da fila, alguém fica sem
 parabéns, o que é melhor que alguém receber três.
 
+### 9. Avisos no celular, sem WhatsApp (opcional)
+
+O cardápio é instalável: o cliente coloca na tela de início e ele abre como app,
+em tela cheia, com ícone próprio. Instalado, ele ganha duas coisas que o site
+comum não tem — armazenamento que o Safari do iPhone não apaga (o cliente
+continua logado) e **aviso na tela do celular**.
+
+Na página do pedido aparece um botão **"quero ser avisado"**. Quem toca passa a
+receber o *pedido no fogo*, *pedido pronto* e *saiu para entrega* como
+notificação do aparelho, mesmo com a tela apagada — sem depender da uazapi
+estar conectada e sem custo por mensagem. O WhatsApp continua saindo igual; são
+canais independentes, e a falha de um não afeta o outro nem o pedido.
+
+Para ligar, gere o par de chaves uma única vez:
+
+```bash
+node scripts/gerar-chaves-push.mjs
+```
+
+Cole `NEXT_PUBLIC_VAPID_PUBLIC_KEY` e `VAPID_PRIVATE_KEY` no `.env.local` (e no
+EasyPanel — a pública **também** em Build Arguments). Sem elas, o botão nem
+aparece.
+
+> **No iPhone o aviso só funciona com o app instalado na tela de início.** É
+> limitação do iOS, não do sistema — a própria tela do pedido explica o passo a
+> passo para quem abre pelo Safari.
+>
+> Gere as chaves **uma vez**. Trocá-las depois derruba, em silêncio, todos os
+> avisos que os clientes já tinham ligado.
+
 ## Como o dono usa no dia a dia
 
 | Tela | Para quê |
@@ -152,6 +182,11 @@ pessoa fecharia um pedido de R$ 0,01 pelo DevTools.
 
 **Pagamento online não pula a fila.** Pedido online nasce como `aguardando_pagamento` e só vira
 `recebido` quando o pagamento é confirmado. Pedido para pagar na hora já entra direto na cozinha.
+
+**O service worker não guarda página nenhuma.** Só arquivo de build (que já tem nome único por
+versão) e imagem entram no cache — `/admin` e `/api` são pulados de propósito. Em restaurante,
+HTML guardado vira cliente pedindo prato esgotado e vendo preço velho, o que é pior do que não
+ter cache. Sem rede, em vez de página velha, aparece o `offline.html`.
 
 **O valor cobrado sai do banco, não do navegador.** Em `src/app/api/pagamentos/route.ts` o
 `transaction_amount` é lido do pedido gravado. O que o navegador manda é apenas *o que* foi
@@ -228,7 +263,12 @@ src/
 │  ├─ cupons.ts          validação e consumo de cupom
 │  ├─ mercadopago.ts     preferência de pagamento e consulta
 │  └─ supabase/          clients (navegador, sessão, service role)
+├─ lib/push.ts           avisos no celular (Web Push)
 └─ proxy.ts              renova a sessão e protege /admin
+
+public/
+├─ sw.js                 service worker: recebe os avisos e cuida do cache
+└─ offline.html          a tela de "sem conexão", solta e sem depender de nada
 ```
 
 ---

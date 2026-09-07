@@ -69,6 +69,13 @@ Se um dia ligar o Mercado Pago, a chave pública dele também entra aqui:
 NEXT_PUBLIC_MP_PUBLIC_KEY=<Public Key do Mercado Pago>
 ```
 
+E, para os **avisos no celular** (o "seu pedido está pronto" que toca no
+aparelho do cliente), a chave pública do push:
+
+```
+NEXT_PUBLIC_VAPID_PUBLIC_KEY=<a pública gerada no passo dos avisos>
+```
+
 > Trocar qualquer um destes valores **exige rebuild**, não basta reiniciar.
 
 ---
@@ -142,6 +149,29 @@ todo mundo — de propósito. Depois, na uazapi, cadastre o webhook
 `x-webhook-token`, e ligue a chave em *WhatsApp* no painel (ela nasce
 desligada).
 
+Para ligar os **avisos no celular** (push), gere o par de chaves uma única vez
+na sua máquina:
+
+```bash
+node scripts/gerar-chaves-push.mjs
+```
+
+A **pública** vai nos dois lugares (Build Arguments **e** Environment, como as
+outras `NEXT_PUBLIC_*`); a **privada**, só no Environment:
+
+```
+NEXT_PUBLIC_VAPID_PUBLIC_KEY=<a pública>
+VAPID_PRIVATE_KEY=<a privada>
+```
+
+⚠️ Gere **uma vez** e guarde. Trocar as chaves depois derruba, em silêncio,
+todos os avisos que os clientes já tinham ligado — cada aparelho ficou inscrito
+com a chave antiga e simplesmente para de receber, sem erro nenhum aparecer.
+
+> No iPhone o aviso só funciona com o cardápio **instalado na tela de início**
+> (é limitação do iOS, não do sistema). A própria tela do pedido explica isso
+> para quem abre pelo Safari.
+
 ⚠️ A **service_role** é a chave de administrador do banco: ela ignora todas as
 regras de segurança. Ela só pode existir aqui e no seu `.env.local`.
 
@@ -188,7 +218,8 @@ Deve responder algo assim:
     "url_base": "https://SEU-DOMINIO",
     "url_base_e_producao": true,
     "mercado_pago": false,
-    "impressao": true
+    "impressao": true,
+    "avisos_no_celular": true
   }
 }
 ```
@@ -309,4 +340,6 @@ Se a mudança envolver alguma variável `NEXT_PUBLIC_*`, atualize também o
 | Cardápio vazio | Está apontando para outro projeto Supabase, sem as migrações |
 | Painel devolve para o login sem parar | Cookie de sessão sem HTTPS. Ligue o HTTPS no domínio |
 | Comanda não imprime | Agente parado no PC, ou `TOKEN_IMPRESSAO` diferente dos dois lados |
+| Botão "me avise" não aparece | `NEXT_PUBLIC_VAPID_PUBLIC_KEY` não foi passada como **Build Argument** (ou é um iPhone sem o app instalado) |
+| Cliente liga o aviso e nada chega | Faltou rodar a migração `0028_avisos_push.sql`, ou falta `VAPID_PRIVATE_KEY` no Environment |
 | Build falha em `npm ci` | `package-lock.json` fora de sincronia; rode `npm install` e faça commit |

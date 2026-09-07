@@ -1,8 +1,11 @@
 "use server";
 
+import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
+import { z } from "zod";
 import { buscarConfiguracoes } from "@/lib/dados";
 import { consumirCupom } from "@/lib/cupons";
+import { pushConfigurado, removerInscricao, salvarInscricao } from "@/lib/push";
 import {
   consultarPagamento,
   mercadoPagoConfigurado,
@@ -115,4 +118,72 @@ export async function verificarPagamentoAction(
     pago: true,
     mensagem: "Pagamento confirmado! Seu pedido entrou na fila.",
   };
+}
+
+/* ------------------------------------------------------------------ *
+ * "Me avise quando ficar pronto"
+ * ------------------------------------------------------------------ */
+
+const esquemaInscricao = z.object({
+  endpoint: z.string().trim().min(20).max(1000).startsWith("https://"),
+  p256dh: z.string().trim().min(1).max(300),
+  auth: z.string().trim().min(1).max(300),
+});
+
+/**
+ * Liga os avisos deste pedido no aparelho de quem está olhando a tela.
+ *
+ * Quem pode: qualquer um com o link do pedido — o mesmo critério da página de
+ * acompanhamento, que já mostra itens e endereço para quem tem o endereço.
+ * O aviso não conta nada que a tela não conte, então não há o que proteger
+ * além disso.
+ */
+export async function inscreverAvisosAction(
+  pedidoId: string,
+  inscricao: unknown,
+): Promise<{ ok: boolean; erro?: string }> {
+  if (!pushConfigurado()) {
+    return { ok: false, erro: "Avisos não configurados nesta loja." };
+  }
+
+  const analise = esquemaInscricao.safeParse(inscricao);
+  if (!analise.success) return { ok: false, erro: "Inscrição inválida." };
+
+  const supabase = criarClienteAdmin();
+  const { data: pedido } = await supabase
+    .from("pedidos")
+    .select("id, cliente_id")
+    .eq("id", pedidoId)
+    .maybeSingle();
+
+  if (!pedido) return { ok: false, erro: "Pedido não encontrado." };
+
+  const salvou = await salvarInscricao({
+    inscricao: analise.data,
+    pedidoId: pedido.id,
+    // guardado junto: assim o PRÓXIMO pedido deste cliente já chega avisado,
+    // sem ele precisar tocar em "me avise" de novo
+    clienteId: pedido.cliente_id,
+    navegador: (await headers()).get("user-agent"),
+  });
+
+  return salvou
+    ? { ok: true }
+    : { ok: false, erro: "Não consegui ligar os avisos agora." };
+}
+
+/** Desliga os avisos naquele aparelho. */
+export async function cancelarAvisosAction(
+  endpoint: string,
+): Promise<{ ok: boolean }> {
+  const analise = z
+    .string()
+    .trim()
+    .min(20)
+    .max(1000)
+    .startsWith("https://")
+    .safeParse(endpoint);
+
+  if (!analise.success) return { ok: false };
+  return { ok: await removerInscricao(analise.data) };
 }

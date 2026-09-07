@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { buscarConfiguracoes } from '@/lib/dados'
+import { avisarStatusPorPush } from '@/lib/push'
 import { criarClienteAdmin, exigirAdmin } from '@/lib/supabase/server'
 import { avisarMudancaDeStatus } from '@/lib/whatsapp'
 import { STATUS_PEDIDO, type Pedido, type StatusPedido } from '@/lib/types'
@@ -64,12 +65,20 @@ export async function mudarStatusAction(
     origem: 'admin',
   })
 
-  // aviso é bônus: falha no WhatsApp não desfaz a mudança de status
+  // Aviso é bônus: falha em qualquer canal não desfaz a mudança de status.
+  // Os dois saem juntos e são independentes — o push chega no aparelho de
+  // quem instalou o cardápio; o WhatsApp, em todo mundo.
   try {
     const config = await buscarConfiguracoes()
     await avisarMudancaDeStatus(pedido, novoStatus, config.nome)
   } catch (erro) {
     console.warn('[admin] não consegui avisar o cliente no WhatsApp', erro)
+  }
+
+  try {
+    await avisarStatusPorPush(pedido, novoStatus)
+  } catch (erro) {
+    console.warn('[admin] não consegui avisar o cliente por push', erro)
   }
 
   revalidatePath('/admin')

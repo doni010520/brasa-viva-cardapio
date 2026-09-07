@@ -70,6 +70,12 @@ export async function GET(request: NextRequest) {
       mercado_pago_navegador: Boolean(process.env.NEXT_PUBLIC_MP_PUBLIC_KEY),
       webhook_assinado: Boolean(process.env.MP_WEBHOOK_SECRET),
       whatsapp: Boolean(process.env.UAZAPI_URL && process.env.UAZAPI_TOKEN),
+      // as duas metades do push: a pública é gravada no BUILD (Build Argument),
+      // a privada é lida no servidor. Faltando uma, o aviso no celular não sai.
+      avisos_no_celular: Boolean(
+        process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY
+      ),
+      avisos_no_celular_navegador: Boolean(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY),
       impressao: Boolean(process.env.TOKEN_IMPRESSAO),
       fuso: process.env.NEXT_PUBLIC_FUSO_HORARIO ?? 'America/Sao_Paulo',
     },

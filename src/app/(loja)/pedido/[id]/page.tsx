@@ -13,6 +13,7 @@ import {
   XCircle,
 } from 'lucide-react'
 import { AtualizacaoAutomatica } from '@/components/loja/atualizacao-automatica'
+import { AvisarQuandoFicarPronto } from '@/components/loja/avisar-quando-ficar-pronto'
 import { PainelPix } from '@/components/loja/painel-pix'
 import { Botao, Cartao, Selo } from '@/components/ui'
 import { buscarConfiguracoes, buscarPedido } from '@/lib/dados'
@@ -164,6 +165,13 @@ export default async function PaginaPedido({ params }: { params: Promise<{ id: s
             </p>
           )}
         </Cartao>
+      )}
+
+      {/* ---------- Aviso no celular ----------
+          Só enquanto há o que avisar: pedido cancelado, já retirado ou
+          esperando pagamento não tem próximo passo para tocar o celular. */}
+      {!cancelado && !finalizado && !aguardandoPagamento && (
+        <AvisarQuandoFicarPronto pedidoId={pedido.id} />
       )}
 
       {/* ---------- Endereço da entrega ---------- */}
