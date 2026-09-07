@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#0d0b0a" />
+    <title>Sem conexão · Brasa Viva</title>
+
+    <!--
+      HTML solto, com o estilo aqui dentro, de propósito: esta é a página que
+      aparece quando NADA carrega. Se ela dependesse do CSS do site, chegaria
+      sem formatação justamente na hora em que precisa funcionar.
+    -->
+    <style>
+      :root {
+        --marca: #e30613;
+        --tinta-50: #faf9f8;
+        --tinta-400: #a8a19b;
+        --tinta-500: #78716c;
+        --tinta-900: #1c1917;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+        background: var(--tinta-50);
+        color: var(--tinta-900);
+        font-family:
+          system-ui,
+          -apple-system,
+          'Segoe UI',
+          Roboto,
+          sans-serif;
+        text-align: center;
+      }
+      .caixa {
+        max-width: 22rem;
+      }
+      .marca {
+        font-size: 0.75rem;
+        font-weight: 700;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--marca);
+      }
+      h1 {
+        margin: 0.75rem 0 0;
+        font-size: 1.5rem;
+        font-weight: 800;
+        letter-spacing: -0.01em;
+      }
+      p {
+        margin: 0.5rem 0 0;
+        color: var(--tinta-500);
+        line-height: 1.5;
+      }
+      button {
+        margin-top: 1.5rem;
+        width: 100%;
+        min-height: 3rem;
+        padding: 0 1.25rem;
+        border: 0;
+        border-radius: 0.75rem;
+        background: var(--marca);
+        color: #fff;
+        font-size: 1rem;
+        font-weight: 600;
+        font-family: inherit;
+        cursor: pointer;
+      }
+      button:active {
+        filter: brightness(0.92);
+      }
+      .rodape {
+        margin-top: 1.25rem;
+        font-size: 0.8125rem;
+        color: var(--tinta-400);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="caixa">
+      <p class="marca">Churrascaria Brasa Viva</p>
+      <h1>Você está sem conexão</h1>
+      <p>
+        Não conseguimos falar com o restaurante agora. Confira o wi-fi ou os dados do celular e
+        tente de novo.
+      </p>
+
+      <button type="button" onclick="location.reload()">Tentar de novo</button>
+
+      <p class="rodape">
+        Seu pedido não se perde: assim que a conexão voltar, ele continua de onde parou.
+      </p>
+    </div>
+
+    <script>
+      // Voltou o sinal enquanto a pessoa olhava para esta tela: recarrega sozinho.
+      window.addEventListener('online', function () {
+        location.reload()
+      })
+    </script>
+  </body>
+</html>

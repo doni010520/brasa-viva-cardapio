@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next'
 import './globals.css'
+import { RegistrarServiceWorker } from '@/components/registrar-service-worker'
 import { urlBaseConfigurada } from '@/lib/url'
 
 /**
@@ -20,6 +21,19 @@ export const metadata: Metadata = {
     'O Tradicional Churrasco Baiano. Almoço livre, no quilo e marmitex. ' +
     'Peça pelo celular, pague e retire — ou receba em casa.',
   applicationName: 'Brasa Viva',
+  /**
+   * O iPhone. Do Safari 16.4 em diante ele lê o display do manifesto, mas
+   * quem tem aparelho mais antigo só abre em tela cheia com estas marcações —
+   * e é justamente no iPhone que instalar importa, porque lá o Safari apaga o
+   * login de site que a pessoa não abre há dias.
+   */
+  appleWebApp: {
+    capable: true,
+    title: 'Brasa Viva',
+    // 'default' porque o fundo do app é claro; translúcido jogaria o conteúdo
+    // para baixo do relógio e do sinal.
+    statusBarStyle: 'default',
+  },
   openGraph: {
     title: 'Churrascaria Brasa Viva',
     description: 'O Tradicional Churrasco Baiano. Peça pelo celular.',
@@ -58,7 +72,10 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="pt-BR" className="h-full">
-      <body className="min-h-full">{children}</body>
+      <body className="min-h-full">
+        {children}
+        <RegistrarServiceWorker />
+      </body>
     </html>
   )
 }

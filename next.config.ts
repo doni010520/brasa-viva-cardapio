@@ -18,6 +18,19 @@ const nextConfig: NextConfig = {
   // curto o bastante para uma troca de foto aparecer sem chorar cache.
   async headers() {
     return [
+      /**
+       * O service worker é a única peça que NÃO pode ser guardada em cache.
+       * Se o navegador segurasse uma versão velha dele, o aparelho ficaria
+       * preso a ela — inclusive deixando de receber os avisos de pedido.
+       */
+      {
+        source: '/sw.js',
+        headers: [
+          { key: 'Content-Type', value: 'application/javascript; charset=utf-8' },
+          { key: 'Cache-Control', value: 'no-cache, no-store, must-revalidate' },
+          { key: 'Service-Worker-Allowed', value: '/' },
+        ],
+      },
       {
         source: '/:all*(webp|png|jpg|jpeg|svg|ico)',
         headers: [
