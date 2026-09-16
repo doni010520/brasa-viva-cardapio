@@ -21,6 +21,31 @@ export function chavePublicaMercadoPago() {
   return process.env.NEXT_PUBLIC_MP_PUBLIC_KEY ?? ''
 }
 
+/** Domínio da própria loja, para montar e-mail de pedido sem e-mail. */
+function dominioDaLoja() {
+  try {
+    const u = process.env.NEXT_PUBLIC_URL_BASE
+    if (u) return new URL(u).hostname.replace(/^www\./, '')
+  } catch {
+    // URL malformada no env: cai no genérico abaixo
+  }
+  return 'sem-email.invalid'
+}
+
+/**
+ * O Mercado Pago exige e-mail do pagador até no Pix. O cardápio pede e-mail
+ * como OPCIONAL (quem entra é o número de WhatsApp), então quando o cliente
+ * não digitou a gente monta um endereço do domínio da loja.
+ *
+ * Isso não é cosmético: entregando o e-mail pronto ao Payment Brick, ele para
+ * de pedir o campo na tela — o cliente vai direto ao Pix.
+ */
+export function emailDoPagador(pedido: { numero: number; cliente_email: string | null }) {
+  const digitado = pedido.cliente_email?.trim()
+  if (digitado) return digitado
+  return `pedido-${pedido.numero}@${dominioDaLoja()}`
+}
+
 function cliente() {
   const accessToken = process.env.MP_ACCESS_TOKEN
   if (!accessToken) throw new Error('MP_ACCESS_TOKEN não configurado.')
@@ -117,11 +142,8 @@ export async function criarPagamento(
   const metodo = brick.payment_method_id ?? 'pix'
   const nomes = primeiroEUltimoNome(pedido.cliente_nome)
 
-  const email =
-    brick.payer?.email?.trim() ||
-    pedido.cliente_email ||
-    // o Mercado Pago exige um e-mail; sem ele o pagamento nem é criado
-    `pedido-${pedido.numero}@sem-email.local`
+  // o que o cliente digitou no Brick vence; senão, o do pedido ou o sintético
+  const email = brick.payer?.email?.trim() || emailDoPagador(pedido)
 
   const cpf = (brick.payer?.identification?.number ?? pedido.cliente_cpf ?? '').replace(/\D/g, '')
 

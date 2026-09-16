@@ -1,7 +1,7 @@
 import { notFound, redirect } from 'next/navigation'
 import { TelaPagamento } from '@/components/loja/tela-pagamento'
 import { buscarConfiguracoes, buscarPedido } from '@/lib/dados'
-import { chavePublicaMercadoPago, mercadoPagoConfigurado } from '@/lib/mercadopago'
+import { chavePublicaMercadoPago, emailDoPagador, mercadoPagoConfigurado } from '@/lib/mercadopago'
 import { Cartao } from '@/components/ui'
 
 export const dynamic = 'force-dynamic'
@@ -42,7 +42,7 @@ export default async function PaginaPagamento({ params }: { params: Promise<{ id
       pedidoId={pedido.id}
       numero={pedido.numero}
       totalCentavos={pedido.total_centavos}
-      emailCliente={pedido.cliente_email}
+      emailCliente={emailDoPagador(pedido)}
       cpfCliente={pedido.cliente_cpf}
       chavePublica={chavePublica}
       aceitaPix={config.aceita_pix}
