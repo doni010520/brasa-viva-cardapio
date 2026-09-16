@@ -293,9 +293,24 @@ export async function criarPedido(
     };
   }
 
-  // Pagamento online pela InfinitePay: o cliente sai para o checkout deles e
-  // volta para o acompanhamento. O link fica gravado no pedido — é o que
-  // alimenta o "Pagar agora" de quem fechou a aba no meio do caminho.
+  // Mercado Pago (Checkout Transparente) é o caminho principal: a tela de
+  // pagamento fica DENTRO do app — Pix e cartão sem o cliente sair do site e
+  // sem o código de WhatsApp que o checkout da InfinitePay exige.
+  if (mercadoPagoConfigurado()) {
+    return {
+      ok: true,
+      pedidoId: pedido.id,
+      numero: pedido.numero,
+      totalCentavos: pedido.total_centavos,
+      destino: `/pedido/${pedido.id}/pagamento`,
+      externo: false,
+    };
+  }
+
+  // InfinitePay é a rede de proteção: só entra em cena se o Mercado Pago não
+  // estiver configurado. O cliente sai para o checkout deles e volta para o
+  // acompanhamento; o link fica gravado no pedido — é o que alimenta o
+  // "Pagar agora" de quem fechou a aba no meio do caminho.
   if (infinitePayConfigurado()) {
     try {
       const link = await criarLinkInfinitePay(pedido, config.nome);
@@ -323,14 +338,12 @@ export async function criarPedido(
     }
   }
 
-  // Mercado Pago (Checkout Transparente): a tela de pagamento DENTRO do app.
+  // Nenhum meio online de pé. A checagem lá em cima já barra esse caso antes de
+  // criar o pedido; se chegou aqui, algo mudou no meio do caminho.
+  await supabase.from("pedidos").delete().eq("id", pedido.id);
   return {
-    ok: true,
-    pedidoId: pedido.id,
-    numero: pedido.numero,
-    totalCentavos: pedido.total_centavos,
-    destino: `/pedido/${pedido.id}/pagamento`,
-    externo: false,
+    ok: false,
+    erro: "O pagamento online ficou indisponível. Escolha pagar na entrega/retirada.",
   };
 }
 
