@@ -129,7 +129,10 @@ export async function buscarPedidosDoPainel(status?: string[]): Promise<Pedido[]
   const supabase = criarClienteAdmin()
   let query = supabase
     .from('pedidos')
-    .select('*, itens:pedido_itens(*)')
+    // notas fiscais vêm junto: o cartão do pedido mostra/emite a NFC-e
+    .select(
+      '*, itens:pedido_itens(*), notas:notas_fiscais(id, status, numero, serie, ambiente, cstat, motivo, autorizada_em, cpf_consumidor)'
+    )
     .order('criado_em', { ascending: true })
     .limit(200)
 

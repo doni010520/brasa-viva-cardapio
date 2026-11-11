@@ -113,6 +113,11 @@ const esquemaProduto = z.object({
    * levar. Oferecer o item errado dá pedido que a casa não consegue entregar.
    */
   modo_consumo: z.enum(['ambos', 'so_local', 'so_viagem', 'interno']),
+  // regra fiscal própria; vazio = padrão da configuração
+  ncm: z.string().trim().refine((v) => v === '' || /^\d{8}$/.test(v), 'NCM tem 8 dígitos.').optional(),
+  cfop: z.string().trim().refine((v) => v === '' || /^5\d{3}$/.test(v), 'CFOP de venda no estado começa com 5.').optional(),
+  csosn: z.enum(['', '102', '103', '300', '400', '500']).optional(),
+  cest: z.string().trim().refine((v) => v === '' || /^\d{7}$/.test(v), 'CEST tem 7 dígitos.').optional(),
 })
 
 export async function salvarProdutoAction(entrada: unknown): Promise<Resposta<{ id: string }>> {
@@ -134,6 +139,14 @@ export async function salvarProdutoAction(entrada: unknown): Promise<Resposta<{ 
     descricao: campos.descricao || null,
     preco_promo_centavos: campos.preco_promo_centavos || null,
     imagem_url: campos.imagem_url || null,
+    ncm: campos.ncm || null,
+    cfop: campos.cfop || null,
+    csosn: campos.csosn || null,
+    cest: campos.cest || null,
+  }
+
+  if (registro.csosn === '500' && !registro.cest) {
+    return { ok: false, erro: 'Com CSOSN 500 (substituição tributária) o CEST é obrigatório.' }
   }
 
   const supabase = criarClienteAdmin()

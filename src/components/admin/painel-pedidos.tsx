@@ -23,6 +23,7 @@ import {
   mudarStatusAction,
   reimprimirAction,
 } from '@/app/admin/(painel)/acoes'
+import { NotaFiscalPedido } from '@/components/admin/nota-fiscal-pedido'
 import { Botao, Cartao, Selo, Vazio } from '@/components/ui'
 import { linkWhatsapp, moeda } from '@/lib/format'
 import { haQuantoTempo, horaCurta } from '@/lib/tempo'
@@ -35,7 +36,7 @@ const COLUNAS: { status: StatusPedido; titulo: string; cor: string }[] = [
   { status: 'saiu_para_entrega', titulo: 'Em rota', cor: 'bg-violet-500' },
 ]
 
-export function PainelPedidos({ pedidos }: { pedidos: Pedido[] }) {
+export function PainelPedidos({ pedidos, nfceAtiva = false }: { pedidos: Pedido[]; nfceAtiva?: boolean }) {
   const aguardando = pedidos.filter((p) => p.status === 'aguardando_pagamento')
   const temEntrega = pedidos.some((p) => p.tipo_entrega === 'entrega')
   const colunas = temEntrega ? COLUNAS : COLUNAS.filter((c) => c.status !== 'saiu_para_entrega')
@@ -53,7 +54,7 @@ export function PainelPedidos({ pedidos }: { pedidos: Pedido[] }) {
           </p>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {aguardando.map((pedido) => (
-              <CartaoPedido key={pedido.id} pedido={pedido} />
+              <CartaoPedido key={pedido.id} pedido={pedido} nfceAtiva={nfceAtiva} />
             ))}
           </div>
         </div>
@@ -79,7 +80,7 @@ export function PainelPedidos({ pedidos }: { pedidos: Pedido[] }) {
                     Nada por aqui
                   </p>
                 ) : (
-                  daColuna.map((pedido) => <CartaoPedido key={pedido.id} pedido={pedido} />)
+                  daColuna.map((pedido) => <CartaoPedido key={pedido.id} pedido={pedido} nfceAtiva={nfceAtiva} />)
                 )}
               </div>
             </section>
@@ -99,7 +100,7 @@ export function PainelPedidos({ pedidos }: { pedidos: Pedido[] }) {
   )
 }
 
-function CartaoPedido({ pedido }: { pedido: Pedido }) {
+function CartaoPedido({ pedido, nfceAtiva }: { pedido: Pedido; nfceAtiva: boolean }) {
   const router = useRouter()
   const [salvando, salvar] = useTransition()
   const [reenfileirando, reenfileirar] = useTransition()
@@ -309,6 +310,9 @@ function CartaoPedido({ pedido }: { pedido: Pedido }) {
               </span>
             )}
           </div>
+
+          {/* nota fiscal: só depois de pago/liberado, e com a emissão ligada na configuração */}
+          {nfceAtiva && pedido.status !== 'aguardando_pagamento' && <NotaFiscalPedido pedido={pedido} />}
         </div>
       )}
 

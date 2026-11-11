@@ -56,6 +56,11 @@ export type Produto = {
   ordem: number
   /** 'ambos' | 'so_local' (buffet) | 'so_viagem' (marmita) | 'interno' (só o balcão lança) */
   modo_consumo: 'ambos' | 'so_local' | 'so_viagem' | 'interno'
+  /** regra fiscal própria; vazio = padrão da configuração */
+  ncm?: string | null
+  cfop?: string | null
+  csosn?: string | null
+  cest?: string | null
   grupos_opcoes?: GrupoOpcoes[]
   secoes_opcoes?: SecaoOpcoes[]
 }
@@ -110,6 +115,26 @@ export type Configuracoes = {
   aceita_entrega: boolean
   tempo_entrega_min: number
   entrega_gratis_acima_centavos: number | null
+  // nota fiscal (NFC-e) — segredos (certificado, CSC) ficam no ambiente, não aqui
+  razao_social: string | null
+  inscricao_estadual: string | null
+  /** 1 Simples Nacional, 2 Simples c/ excesso, 3 Regime normal, 4 MEI */
+  crt: number
+  fiscal_logradouro: string | null
+  fiscal_numero: string | null
+  fiscal_complemento: string | null
+  fiscal_bairro: string | null
+  fiscal_cep: string | null
+  fiscal_municipio_ibge: string
+  fiscal_municipio: string
+  fiscal_uf: string
+  nfce_ativa: boolean
+  /** 2 homologação (teste), 1 produção */
+  nfce_ambiente: number
+  nfce_serie: number
+  nfce_ncm_padrao: string
+  nfce_cfop_padrao: string
+  nfce_csosn_padrao: string
 }
 
 /**
@@ -224,6 +249,19 @@ export type PedidoItem = {
   total_centavos: number
 }
 
+/** O pedaço da NFC-e que o painel precisa ver. */
+export type NotaResumo = {
+  id: string
+  status: 'processando' | 'autorizada' | 'rejeitada' | 'cancelada' | 'erro'
+  numero: number
+  serie: number
+  ambiente: number
+  cstat: string | null
+  motivo: string | null
+  autorizada_em: string | null
+  cpf_consumidor: string | null
+}
+
 export type Pedido = {
   id: string
   numero: number
@@ -268,6 +306,8 @@ export type Pedido = {
   pagamento_detalhe: string | null
   /** 'site' (cliente pediu) ou 'balcao' (atendente lançou) */
   origem: 'site' | 'balcao'
+  /** só vem preenchido no painel (buscarPedidosDoPainel) */
+  notas?: NotaResumo[]
   criado_em: string
   atualizado_em: string
   itens?: PedidoItem[]

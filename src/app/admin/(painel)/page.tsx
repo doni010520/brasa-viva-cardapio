@@ -89,7 +89,7 @@ export default async function PaginaPedidos() {
         />
       </div>
 
-      <PainelPedidos pedidos={pedidos} />
+      <PainelPedidos pedidos={pedidos} nfceAtiva={config.nfce_ativa} />
     </>
   )
 }

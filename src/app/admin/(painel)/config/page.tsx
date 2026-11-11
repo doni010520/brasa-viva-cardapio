@@ -1,4 +1,7 @@
+import { ConfigFiscal, type SituacaoCertificado } from '@/components/admin/config-fiscal'
 import { FormularioConfig } from '@/components/admin/formulario-config'
+import { carregarCertificado, certificadoConfigurado } from '@/lib/nfce/certificado'
+import { pendenciasNfce } from '@/lib/nfce/emitir'
 import { buscarBairros, buscarConfiguracoes, buscarHorarios } from '@/lib/dados'
 import { mercadoPagoConfigurado } from '@/lib/mercadopago'
 import { whatsappConfigurado } from '@/lib/whatsapp'
@@ -21,6 +24,23 @@ export default async function PaginaConfig() {
     buscarBairros(true),
   ])
 
+  // só o resumo do certificado vai pra tela; chave e senha nunca saem do servidor
+  let certificado: SituacaoCertificado = { estado: 'ausente' }
+  if (certificadoConfigurado()) {
+    try {
+      const c = carregarCertificado()
+      certificado = {
+        estado: 'ok',
+        titular: c.titular,
+        cnpj: c.cnpj,
+        validoAte: c.validoAte.toISOString(),
+        cnpjBate: !c.cnpj || c.cnpj === (config.cnpj ?? '').replace(/\D/g, ''),
+      }
+    } catch (e) {
+      certificado = { estado: 'invalido', erro: e instanceof Error ? e.message : String(e) }
+    }
+  }
+
   return (
     <>
       <div className="mb-5">
@@ -36,6 +56,13 @@ export default async function PaginaConfig() {
         bairros={bairros}
         mercadoPagoLigado={mercadoPagoConfigurado()}
         whatsappLigado={whatsappConfigurado()}
+      />
+
+      <ConfigFiscal
+        config={config}
+        certificado={certificado}
+        cscConfigurado={Boolean(process.env.NFCE_CSC_ID && process.env.NFCE_CSC_TOKEN)}
+        pendencias={pendenciasNfce(config)}
       />
     </>
   )

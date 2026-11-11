@@ -1,5 +1,8 @@
 import type { NextRequest } from 'next/server'
 import { criarLinkInfinitePay, infinitePayConfigurado } from '@/lib/infinitepay'
+import { carregarCertificado, certificadoConfigurado } from '@/lib/nfce/certificado'
+import { statusServico } from '@/lib/nfce/sefaz'
+import { urlServico } from '@/lib/nfce/sefaz-ba'
 import { urlBaseConfigurada } from '@/lib/url'
 /**
  * Sinal de vida e diagnóstico do deploy.
@@ -55,6 +58,35 @@ export async function GET(request: NextRequest) {
     }
   }
 
+  // Diagnóstico da NFC-e: abre o certificado e pergunta à SEFAZ-BA se o
+  // serviço está no ar (consStatServ). ?nfce=TOKEN&ambiente=1 testa produção;
+  // o padrão é homologação. Não emite nada.
+  const diagNfce = request.nextUrl.searchParams.get('nfce')
+  if (diagNfce && process.env.TOKEN_IMPRESSAO && diagNfce === process.env.TOKEN_IMPRESSAO) {
+    const ambiente = request.nextUrl.searchParams.get('ambiente') === '1' ? 1 : 2
+    const resposta: Record<string, unknown> = {
+      ambiente: ambiente === 1 ? 'producao' : 'homologacao',
+      endpoint: urlServico('status', ambiente),
+      csc: Boolean(process.env.NFCE_CSC_ID && process.env.NFCE_CSC_TOKEN),
+      certificado: certificadoConfigurado() ? 'configurado' : 'ausente',
+    }
+    if (!certificadoConfigurado()) return Response.json(resposta)
+    try {
+      const cert = carregarCertificado()
+      resposta.certificado = {
+        titular: cert.titular,
+        cnpj: cert.cnpj,
+        valido_ate: cert.validoAte.toISOString(),
+        vencido: cert.validoAte.getTime() < Date.now(),
+      }
+      const status = await statusServico(ambiente, cert)
+      resposta.sefaz = { cStat: status.cStat, motivo: status.motivo, em_operacao: status.cStat === '107' }
+    } catch (erro) {
+      resposta.erro = erro instanceof Error ? erro.message : String(erro)
+    }
+    return Response.json(resposta)
+  }
+
   return Response.json({
     ok: true,
     servico: 'cardapio-brasa-viva',
@@ -77,6 +109,8 @@ export async function GET(request: NextRequest) {
       ),
       avisos_no_celular_navegador: Boolean(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY),
       impressao: Boolean(process.env.TOKEN_IMPRESSAO),
+      nfce_certificado: Boolean(process.env.NFCE_CERT_PFX_BASE64 && process.env.NFCE_CERT_SENHA),
+      nfce_csc: Boolean(process.env.NFCE_CSC_ID && process.env.NFCE_CSC_TOKEN),
       fuso: process.env.NEXT_PUBLIC_FUSO_HORARIO ?? 'America/Sao_Paulo',
     },
   })

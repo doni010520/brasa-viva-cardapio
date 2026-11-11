@@ -55,6 +55,11 @@ export function EditorProduto({
   const [destaque, setDestaque] = useState(produto?.destaque ?? false)
   const [ordem, setOrdem] = useState(String(produto?.ordem ?? 0))
   const [modoConsumo, setModoConsumo] = useState(produto?.modo_consumo ?? 'ambos')
+  // regra fiscal própria (vazio = usa o padrão da Configuração)
+  const [ncm, setNcm] = useState(produto?.ncm ?? '')
+  const [cfop, setCfop] = useState(produto?.cfop ?? '')
+  const [csosn, setCsosn] = useState(produto?.csosn ?? '')
+  const [cest, setCest] = useState(produto?.cest ?? '')
 
   const { pendente, marcarSalvo } = useNaoSalvo({
     categoriaId,
@@ -67,6 +72,10 @@ export function EditorProduto({
     destaque,
     ordem,
     modoConsumo,
+    ncm,
+    cfop,
+    csosn,
+    cest,
   })
 
   function enviar(evento: React.FormEvent) {
@@ -87,6 +96,10 @@ export function EditorProduto({
         destaque,
         ordem,
         modo_consumo: modoConsumo,
+        ncm,
+        cfop,
+        csosn,
+        cest,
       })
 
       if (!resposta.ok) {
@@ -233,6 +246,39 @@ export function EditorProduto({
                     : 'Aparece para todo mundo, esteja no salão ou pedindo de casa.'}
             </p>
           </div>
+
+          {/* Nota fiscal: só preencher se a contabilidade disser que este item
+              foge do padrão (refrigerante e cerveja costumam ter ST). */}
+          <details className="rounded-xl border border-tinta-200 px-3 py-2">
+            <summary className="cursor-pointer text-sm font-medium text-tinta-700">
+              Nota fiscal {ncm || cfop || csosn || cest ? '(regra própria)' : '(usa o padrão da loja)'}
+            </summary>
+            <div className="mt-3 grid gap-3 sm:grid-cols-4">
+              <div>
+                <Rotulo htmlFor="ncm">NCM</Rotulo>
+                <Campo id="ncm" inputMode="numeric" placeholder="padrão" value={ncm} onChange={(e) => setNcm(e.target.value.replace(/\D/g, '').slice(0, 8))} />
+              </div>
+              <div>
+                <Rotulo htmlFor="cfop">CFOP</Rotulo>
+                <Campo id="cfop" inputMode="numeric" placeholder="padrão" value={cfop} onChange={(e) => setCfop(e.target.value.replace(/\D/g, '').slice(0, 4))} />
+              </div>
+              <div>
+                <Rotulo htmlFor="csosn">CSOSN</Rotulo>
+                <Selecao id="csosn" value={csosn} onChange={(e) => setCsosn(e.target.value)}>
+                  <option value="">padrão</option>
+                  <option value="102">102</option>
+                  <option value="103">103</option>
+                  <option value="300">300</option>
+                  <option value="400">400</option>
+                  <option value="500">500 (ST)</option>
+                </Selecao>
+              </div>
+              <div>
+                <Rotulo htmlFor="cest">CEST</Rotulo>
+                <Campo id="cest" inputMode="numeric" placeholder={csosn === '500' ? 'obrigatório' : '-'} value={cest} onChange={(e) => setCest(e.target.value.replace(/\D/g, '').slice(0, 7))} />
+              </div>
+            </div>
+          </details>
 
           <div className="flex flex-wrap gap-5 pt-1">
             <label className="flex items-center gap-2.5">

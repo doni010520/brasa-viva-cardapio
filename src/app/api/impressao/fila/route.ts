@@ -1,7 +1,7 @@
 import type { NextRequest } from 'next/server'
 import { z } from 'zod'
 import { buscarConfiguracoes } from '@/lib/dados'
-import { comandaEscpos, reciboEscpos } from '@/lib/escpos'
+import { comandaEscpos, danfeNfceEscpos, reciboEscpos } from '@/lib/escpos'
 import { criarClienteAdmin } from '@/lib/supabase/server'
 import type { Pedido } from '@/lib/types'
 
@@ -75,9 +75,32 @@ export async function GET(request: NextRequest) {
     }
 
     const pedido = data as Pedido
+
+    // 'nfce' = DANFE da nota fiscal, impresso a partir do XML autorizado
+    let danfe: Uint8Array | null = null
+    if (trabalho.via === 'nfce') {
+      const { data: nota } = await supabase
+        .from('notas_fiscais')
+        .select('xml')
+        .eq('pedido_id', pedido.id)
+        .eq('status', 'autorizada')
+        .order('autorizada_em', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+      if (!nota?.xml) {
+        await supabase
+          .from('impressoes')
+          .update({ status: 'erro', erro: 'nota autorizada não encontrada' })
+          .eq('id', trabalho.id)
+        continue
+      }
+      danfe = danfeNfceEscpos(nota.xml)
+    }
+
     // 'recibo' é a via do cliente (comprovante de consumo); o resto é cozinha
-    const bytes =
-      trabalho.via === 'recibo'
+    const bytes = danfe
+      ? danfe
+      : trabalho.via === 'recibo'
         ? reciboEscpos(pedido, {
             nome: config.nome,
             cnpj: config.cnpj,

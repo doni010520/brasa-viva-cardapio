@@ -197,3 +197,81 @@ export async function salvarHorariosAction(entrada: unknown): Promise<Resposta> 
   revalidatePath('/admin', 'layout')
   return { ok: true }
 }
+
+// ------------------------------------------------------------------ nota fiscal
+
+const so = (v: string) => v.replace(/\D/g, '')
+
+const esquemaFiscal = z
+  .object({
+    razao_social: z.string().trim().max(60),
+    inscricao_estadual: z.string().trim().max(20),
+    crt: z.coerce.number().int().min(1).max(4),
+    fiscal_logradouro: z.string().trim().max(60),
+    fiscal_numero: z.string().trim().max(60),
+    fiscal_complemento: z.string().trim().max(60).optional(),
+    fiscal_bairro: z.string().trim().max(60),
+    fiscal_cep: z.string().trim().max(10),
+    fiscal_municipio_ibge: z.string().trim().refine((v) => so(v).length === 7, 'Código IBGE do município tem 7 dígitos.'),
+    fiscal_municipio: z.string().trim().min(2).max(60),
+    nfce_ativa: z.boolean(),
+    nfce_ambiente: z.coerce.number().int().refine((v) => v === 1 || v === 2),
+    nfce_serie: z.coerce.number().int().min(1).max(889),
+    nfce_ncm_padrao: z.string().trim().refine((v) => so(v).length === 8, 'NCM padrão tem 8 dígitos.'),
+    nfce_cfop_padrao: z.string().trim().regex(/^5\d{3}$/, 'CFOP padrão de venda no estado começa com 5 (ex.: 5102).'),
+    nfce_csosn_padrao: z.enum(['102', '103', '300', '400', '500']),
+  })
+  .refine((d) => !d.fiscal_cep || so(d.fiscal_cep).length === 8, { message: 'CEP com 8 dígitos.' })
+
+export async function salvarFiscalAction(entrada: unknown): Promise<Resposta> {
+  try {
+    await exigirDono()
+  } catch {
+    return { ok: false, erro: 'Só o dono pode fazer isso. Se a sessão expirou, entre de novo.' }
+  }
+  const analise = esquemaFiscal.safeParse(entrada)
+  if (!analise.success) return { ok: false, erro: analise.error.issues[0]?.message ?? 'Dados inválidos.' }
+  const d = analise.data
+
+  const supabase = criarClienteAdmin()
+  const { error } = await supabase
+    .from('configuracoes')
+    .update({
+      ...d,
+      razao_social: d.razao_social || null,
+      inscricao_estadual: so(d.inscricao_estadual) || null,
+      fiscal_complemento: d.fiscal_complemento || null,
+      fiscal_cep: so(d.fiscal_cep) || null,
+      fiscal_municipio_ibge: so(d.fiscal_municipio_ibge),
+      nfce_ncm_padrao: so(d.nfce_ncm_padrao),
+      atualizado_em: new Date().toISOString(),
+    })
+    .eq('id', 1)
+  if (error) return { ok: false, erro: 'Não consegui salvar os dados fiscais.' }
+
+  revalidatePath('/admin', 'layout')
+  return { ok: true }
+}
+
+/** Liga para a SEFAZ com o certificado e pergunta se o serviço está no ar. */
+export async function testarSefazAction(): Promise<{ ok: boolean; mensagem: string }> {
+  try {
+    await exigirDono()
+  } catch {
+    return { ok: false, mensagem: 'Só o dono pode fazer isso.' }
+  }
+  const { carregarCertificado } = await import('@/lib/nfce/certificado')
+  const { statusServico } = await import('@/lib/nfce/sefaz')
+  const { buscarConfiguracoes } = await import('@/lib/dados')
+  try {
+    const config = await buscarConfiguracoes()
+    const ambiente = config.nfce_ambiente === 1 ? 1 : 2
+    const r = await statusServico(ambiente, carregarCertificado())
+    const nome = ambiente === 1 ? 'produção' : 'homologação (teste)'
+    return r.cStat === '107'
+      ? { ok: true, mensagem: `SEFAZ-BA em ${nome} respondeu: ${r.motivo}. Certificado aceito.` }
+      : { ok: false, mensagem: `SEFAZ-BA (${nome}) respondeu ${r.cStat}: ${r.motivo}` }
+  } catch (e) {
+    return { ok: false, mensagem: e instanceof Error ? e.message : String(e) }
+  }
+}
