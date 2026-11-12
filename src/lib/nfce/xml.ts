@@ -71,6 +71,19 @@ export type DadosNota = {
   cpfConsumidor: string | null
   /** pedido entregue em casa (indPres 4) ou presencial (indPres 1) */
   entregaEmDomicilio: boolean
+  /** cliente e endereço de entrega — obrigatório na NFC-e de entrega (indPres 4) */
+  destinatario?: {
+    nome: string | null
+    logradouro: string | null
+    numero: string | null
+    complemento: string | null
+    bairro: string | null
+    cep: string | null
+    municipioIbge: string
+    municipio: string
+    uf: string
+    telefone: string | null
+  } | null
   infoComplementar: string | null
   csc: { id: string; token: string }
   respTecnico?: { cnpj: string; contato: string; email: string; fone: string } | null
@@ -273,14 +286,38 @@ export function montarNfce(d: DadosNota): NotaMontada {
     tag('CRT', e.crt) +
     '</emit>'
 
-  // consumidor só aparece se pediu CPF na nota
-  const dest = d.cpfConsumidor
-    ? '<dest>' +
-      tag('CPF', digitos(d.cpfConsumidor)) +
-      (d.ambiente === 2 ? tag('xNome', 'NF-E EMITIDA EM AMBIENTE DE HOMOLOGACAO - SEM VALOR FISCAL') : '') +
-      tag('indIEDest', 9) +
-      '</dest>'
-    : ''
+  // Destinatário: no balcão só aparece se o cliente pediu CPF na nota. Na
+  // entrega a domicílio (indPres 4) é obrigatório (rejeição 787): vai nome e
+  // endereço de entrega; sem CPF, a identificação segue com idEstrangeiro
+  // vazio (aceito pelo schema para consumidor não identificado).
+  const dd = d.entregaEmDomicilio ? d.destinatario ?? null : null
+  const dest =
+    d.cpfConsumidor || dd
+      ? '<dest>' +
+        (d.cpfConsumidor ? tag('CPF', digitos(d.cpfConsumidor)) : '<idEstrangeiro/>') +
+        (d.ambiente === 2
+          ? tag('xNome', 'NF-E EMITIDA EM AMBIENTE DE HOMOLOGACAO - SEM VALOR FISCAL')
+          : dd?.nome
+            ? tag('xNome', texto(dd.nome, 60))
+            : '') +
+        (dd
+          ? '<enderDest>' +
+            tag('xLgr', texto(dd.logradouro || 'NAO INFORMADO', 60)) +
+            tag('nro', texto(dd.numero || 'S/N', 60)) +
+            (dd.complemento ? tag('xCpl', texto(dd.complemento, 60)) : '') +
+            tag('xBairro', texto(dd.bairro || 'NAO INFORMADO', 60)) +
+            tag('cMun', dd.municipioIbge) +
+            tag('xMun', texto(dd.municipio, 60)) +
+            tag('UF', dd.uf) +
+            (dd.cep && digitos(dd.cep).length === 8 ? tag('CEP', digitos(dd.cep)) : '') +
+            tag('cPais', 1058) +
+            tag('xPais', 'BRASIL') +
+            (dd.telefone && digitos(dd.telefone).length >= 6 ? tag('fone', digitos(dd.telefone).slice(-14)) : '') +
+            '</enderDest>'
+          : '') +
+        tag('indIEDest', 9) +
+        '</dest>'
+      : ''
 
   const pesos = d.itens.map((i) => i.totalCentavos)
   const descontos = ratear(d.descontoCentavos, pesos)

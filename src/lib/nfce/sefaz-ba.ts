@@ -1,7 +1,10 @@
 /**
- * Endereços da SEFAZ-BA para NFC-e (layout 4.00).
+ * Endereços da NFC-e da Bahia (layout 4.00).
  *
- * A Bahia é autorizadora própria (não usa SVRS). Qualquer endereço pode
+ * A SEFAZ-BA autoriza só NF-e (modelo 55); a NFC-e (65) da Bahia é
+ * autorizada pela SVRS (Sefaz Virtual do RS) — mandar NFC-e pro host da
+ * SEFAZ-BA dá rejeição 702. QR Code e consulta pública continuam nos
+ * endereços da própria SEFAZ-BA. Qualquer endereço pode
  * ser trocado por variável de ambiente sem novo deploy de código —
  * o diagnóstico (/api/saude?nfce=...) mostra o que está valendo.
  */
@@ -11,19 +14,19 @@ export const UF_BA = '29'
 export type Ambiente = 1 | 2 // 1 = produção, 2 = homologação
 
 const HOST: Record<Ambiente, string> = {
-  1: 'https://nfe.sefaz.ba.gov.br',
-  2: 'https://hnfe.sefaz.ba.gov.br',
+  1: 'https://nfce.svrs.rs.gov.br',
+  2: 'https://nfce-homologacao.svrs.rs.gov.br',
 }
 
 export type Servico = 'autorizacao' | 'retAutorizacao' | 'consulta' | 'status' | 'evento' | 'inutilizacao'
 
 const CAMINHO: Record<Servico, string> = {
-  autorizacao: '/webservices/NFeAutorizacao4/NFeAutorizacao4.asmx',
-  retAutorizacao: '/webservices/NFeRetAutorizacao4/NFeRetAutorizacao4.asmx',
-  consulta: '/webservices/NFeConsultaProtocolo4/NFeConsultaProtocolo4.asmx',
-  status: '/webservices/NFeStatusServico4/NFeStatusServico4.asmx',
-  evento: '/webservices/NFeRecepcaoEvento4/NFeRecepcaoEvento4.asmx',
-  inutilizacao: '/webservices/NFeInutilizacao4/NFeInutilizacao4.asmx',
+  autorizacao: '/ws/NfeAutorizacao/NFeAutorizacao4.asmx',
+  retAutorizacao: '/ws/NfeRetAutorizacao/NFeRetAutorizacao4.asmx',
+  consulta: '/ws/NfeConsulta/NfeConsulta4.asmx',
+  status: '/ws/NfeStatusServico/NfeStatusServico4.asmx',
+  evento: '/ws/recepcaoevento/recepcaoevento4.asmx',
+  inutilizacao: '/ws/nfeinutilizacao/nfeinutilizacao4.asmx',
 }
 
 /** namespace do WSDL e a "action" SOAP de cada serviço */

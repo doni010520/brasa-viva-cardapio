@@ -249,6 +249,22 @@ export async function emitirNfce(
       },
       cpfConsumidor: opcoes.cpf?.replace(/\D/g, '') || null,
       entregaEmDomicilio: pedido.tipo_entrega === 'entrega',
+      // entrega é sempre no município da loja (área de entrega por bairro)
+      destinatario:
+        pedido.tipo_entrega === 'entrega'
+          ? {
+              nome: pedido.cliente_nome,
+              logradouro: pedido.endereco_rua,
+              numero: pedido.endereco_numero,
+              complemento: pedido.endereco_complemento,
+              bairro: pedido.endereco_bairro,
+              cep: null,
+              municipioIbge: config.fiscal_municipio_ibge ?? '2910057',
+              municipio: config.fiscal_municipio ?? "Dias d'Avila",
+              uf: config.fiscal_uf ?? 'BA',
+              telefone: pedido.cliente_telefone,
+            }
+          : null,
       infoComplementar: `Pedido #${String(pedido.numero).padStart(3, '0')}`,
       csc: { id: process.env.NFCE_CSC_ID ?? '', token: process.env.NFCE_CSC_TOKEN ?? '' },
       respTecnico: respTecnico(),

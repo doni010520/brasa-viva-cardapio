@@ -1,6 +1,9 @@
 # NFC-e: como ligar
 
-Emissão direta na SEFAZ-BA (modelo 65, layout 4.00), sem provedor pago.
+Emissão própria (modelo 65, layout 4.00), sem provedor pago. A NFC-e da Bahia é
+autorizada pela **SVRS** (nfce.svrs.rs.gov.br), não pelo host da SEFAZ-BA (lá dá
+rejeição 702); QR Code e consulta pública são da SEFAZ-BA. Entrega a domicílio
+(indPres 4) leva o destinatário com nome e endereço (rejeição 787 sem ele).
 Código em `src/lib/nfce/`. Banco: migration `0029_nfce.sql`.
 
 ## O que precisa chegar
